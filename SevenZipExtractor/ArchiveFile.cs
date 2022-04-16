@@ -2,21 +2,44 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace SevenZipExtractor
 {
     public class ArchiveFile : IDisposable
     {
+        public class ExtractProgressProp
+        {
+            public ExtractProgressProp(ulong Read, ulong TotalRead, ulong TotalSize, double TotalSecond)
+            {
+                this.Read = Read;
+                this.TotalRead = TotalRead;
+                this.TotalSize = TotalSize;
+                this.Speed = (ulong)(TotalRead / TotalSecond);
+            }
+
+            public ulong Read { get; private set; }
+            public ulong TotalRead { get; private set; }
+            public ulong TotalSize { get; private set; }
+            public ulong Speed { get; private set; }
+            public double PercentProgress => (TotalRead / (double)TotalSize) * 100;
+            public TimeSpan TimeLeft => TimeSpan.FromSeconds((TotalSize - TotalRead) / Speed);
+        }
+
         private SevenZipHandle sevenZipHandle;
         private readonly IInArchive archive;
         private readonly InStreamWrapper archiveStream;
         private IList<Entry> entries;
 
         private string libraryFilePath;
+        public event EventHandler<ExtractProgressProp> ExtractProgress;
+        public void UpdateProgress(ExtractProgressProp e) => ExtractProgress?.Invoke(this, e);
 
         public ArchiveFile(string archiveFilePath, string libraryFilePath = null)
         {
+
             this.libraryFilePath = libraryFilePath;
 
             this.InitializeAndValidateLibrary();
@@ -95,9 +118,10 @@ namespace SevenZipExtractor
             });
         }
 
-        public void Extract(Func<Entry, string> getOutputPath)
+        public void Extract(Func<Entry, string> getOutputPath, CancellationToken Token = new CancellationToken())
         {
-            IList<Stream> fileStreams = new List<Stream>();
+            IList<CancellableFileStream> fileStreams = new List<CancellableFileStream>();
+            ArchiveStreamsCallback streamCallback;
 
             try
             {
@@ -125,14 +149,19 @@ namespace SevenZipExtractor
                         Directory.CreateDirectory(directoryName);
                     }
 
-                    fileStreams.Add(File.Create(outputPath));
+                    fileStreams.Add(new CancellableFileStream(File.Create(outputPath), Token));
                 }
 
-                this.archive.Extract(null, 0xFFFFFFFF, 0, new ArchiveStreamsCallback(fileStreams));
+                streamCallback = new ArchiveStreamsCallback(fileStreams);
+                ExtractProgressStopwatch = Stopwatch.StartNew();
+                streamCallback.ReadProgress += StreamCallback_ReadProperty;
+
+                this.archive.Extract(null, 0xFFFFFFFF, 0, streamCallback);
+                streamCallback.ReadProgress -= StreamCallback_ReadProperty;
             }
             finally
             {
-                foreach (Stream stream in fileStreams)
+                foreach (CancellableFileStream stream in fileStreams)
                 {
                     if (stream != null)
                     {
@@ -141,6 +170,23 @@ namespace SevenZipExtractor
                 }
             }
         }
+
+        ulong LastSize = 0;
+
+        private ulong GetLastSize(ulong input)
+        {
+            if (LastSize > input)
+                LastSize = input;
+
+            ulong a = input - LastSize;
+            LastSize = input;
+            return a;
+        }
+
+        Stopwatch ExtractProgressStopwatch = Stopwatch.StartNew();
+        private void StreamCallback_ReadProperty(object sender, FileProgressProperty e) =>
+            UpdateProgress(new ExtractProgressProp(GetLastSize(e.StartRead),
+                e.StartRead, e.EndRead, ExtractProgressStopwatch.Elapsed.TotalSeconds));
 
         public IList<Entry> Entries
         {
