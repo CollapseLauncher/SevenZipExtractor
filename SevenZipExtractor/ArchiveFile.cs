@@ -12,14 +12,17 @@ namespace SevenZipExtractor
     {
         public class ExtractProgressProp
         {
-            public ExtractProgressProp(ulong Read, ulong TotalRead, ulong TotalSize, double TotalSecond)
+            public ExtractProgressProp(ulong Read, ulong TotalRead, ulong TotalSize, double TotalSecond, int Count, int TotalCount)
             {
                 this.Read = Read;
                 this.TotalRead = TotalRead;
                 this.TotalSize = TotalSize;
                 this.Speed = (ulong)(TotalRead / TotalSecond);
+                this.Count = Count;
+                this.TotalCount = TotalCount;
             }
-
+            public int Count { get; set; }
+            public int TotalCount { get; set; }
             public ulong Read { get; private set; }
             public ulong TotalRead { get; private set; }
             public ulong TotalSize { get; private set; }
@@ -32,6 +35,7 @@ namespace SevenZipExtractor
         private readonly IInArchive archive;
         private readonly InStreamWrapper archiveStream;
         private IList<Entry> entries;
+        private int TotalCount;
 
         private string libraryFilePath;
         public event EventHandler<ExtractProgressProp> ExtractProgress;
@@ -96,6 +100,7 @@ namespace SevenZipExtractor
 
             this.archive = this.sevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format.Value]);
             this.archiveStream = new InStreamWrapper(archiveStream);
+            this.TotalCount = Entries.Sum(x => x.IsFolder ? 0 : 1);
         }
 
         public void Extract(string outputFolder, bool overwrite = false)
@@ -184,9 +189,11 @@ namespace SevenZipExtractor
         }
 
         Stopwatch ExtractProgressStopwatch = Stopwatch.StartNew();
-        private void StreamCallback_ReadProperty(object sender, FileProgressProperty e) =>
+        private void StreamCallback_ReadProperty(object sender, FileProgressProperty e)
+        {
             UpdateProgress(new ExtractProgressProp(GetLastSize(e.StartRead),
-                e.StartRead, e.EndRead, ExtractProgressStopwatch.Elapsed.TotalSeconds));
+                e.StartRead, e.EndRead, ExtractProgressStopwatch.Elapsed.TotalSeconds, e.Count, TotalCount));
+        }
 
         public IList<Entry> Entries
         {

@@ -8,6 +8,7 @@ namespace SevenZipExtractor
     {
         public ulong StartRead { get; set; }
         public ulong EndRead { get; set; }
+        public int Count { get; set; }
     }
     public class FileStatusProperty
     {
@@ -26,6 +27,7 @@ namespace SevenZipExtractor
         private ulong TotalSize = 0;
         private ulong TotalRead = 0;
         private string CurrentName = "";
+        private int Count = 0;
 
         public ArchiveStreamsCallback(IList<CancellableFileStream> streams) 
         {
@@ -35,13 +37,13 @@ namespace SevenZipExtractor
         public void SetTotal(ulong total)
         {
             TotalSize = total;
-            UpdateProgress(new FileProgressProperty { StartRead = TotalRead, EndRead = TotalSize } );
+            UpdateProgress(new FileProgressProperty { StartRead = TotalRead, EndRead = TotalSize, Count = Count } );
         }
 
         public void SetCompleted(ref ulong completeValue)
         {
             TotalRead = completeValue;
-            UpdateProgress(new FileProgressProperty { StartRead = TotalRead, EndRead = TotalSize });
+            UpdateProgress(new FileProgressProperty { StartRead = TotalRead, EndRead = TotalSize, Count = Count });
         }
 
         public int GetStream(uint index, out ISequentialOutStream outStream, AskMode askExtractMode)
@@ -68,6 +70,7 @@ namespace SevenZipExtractor
             else
             {
                 CurrentName = stream.Name;
+                Count++;
                 UpdateStatus(new FileStatusProperty { Name = CurrentName });
             }
 
