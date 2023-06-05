@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Runtime.InteropServices;
-using System.Diagnostics;
+using System.Threading;
 
 namespace SevenZipExtractor
 {
@@ -36,6 +37,7 @@ namespace SevenZipExtractor
         private readonly InStreamWrapper archiveStream;
         private IList<Entry> entries;
         private int TotalCount;
+        private CultureInfo culture = CultureInfo.CurrentCulture;
 
         private string libraryFilePath;
         public event EventHandler<ExtractProgressProp> ExtractProgress;
@@ -223,9 +225,9 @@ namespace SevenZipExtractor
                     bool isEncrypted = this.GetProperty<bool>(fileIndex, ItemPropId.kpidEncrypted);
                     ulong size = this.GetProperty<ulong>(fileIndex, ItemPropId.kpidSize);
                     ulong packedSize = this.GetProperty<ulong>(fileIndex, ItemPropId.kpidPackedSize);
-                    DateTime creationTime = this.GetPropertySafe<DateTime>(fileIndex, ItemPropId.kpidCreationTime);
-                    DateTime lastWriteTime = this.GetPropertySafe<DateTime>(fileIndex, ItemPropId.kpidLastWriteTime);
-                    DateTime lastAccessTime = this.GetPropertySafe<DateTime>(fileIndex, ItemPropId.kpidLastAccessTime);
+                    DateTime creationTime = GetDateTime(fileIndex, ItemPropId.kpidCreationTime);
+                    DateTime lastWriteTime = GetDateTime(fileIndex, ItemPropId.kpidLastWriteTime);
+                    DateTime lastAccessTime = GetDateTime(fileIndex, ItemPropId.kpidLastAccessTime);
                     uint crc = this.GetPropertySafe<uint>(fileIndex, ItemPropId.kpidCRC);
                     uint attributes = this.GetPropertySafe<uint>(fileIndex, ItemPropId.kpidAttributes);
                     string comment = this.GetPropertySafe<string>(fileIndex, ItemPropId.kpidComment);
@@ -271,6 +273,14 @@ namespace SevenZipExtractor
             }
         }
 
+        private DateTime GetDateTime(uint fileIndex, ItemPropId name)
+        {
+            PropVariant propVariant = new PropVariant();
+            this.archive.GetProperty(fileIndex, name, ref propVariant);
+
+            return DateTime.FromFileTime(propVariant.longValue);
+        }
+
         private T GetProperty<T>(uint fileIndex, ItemPropId name)
         {
             PropVariant propVariant = new PropVariant();
@@ -294,7 +304,8 @@ namespace SevenZipExtractor
             bool isNullable = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
             Type underlyingType = isNullable ? Nullable.GetUnderlyingType(type) : type;
 
-            T result = (T)Convert.ChangeType(value.ToString(), underlyingType);
+            string valueString = value.ToString();
+            T result = (T)Convert.ChangeType(valueString, underlyingType);
 
             return result;
         }
