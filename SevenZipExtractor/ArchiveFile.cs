@@ -436,20 +436,14 @@ namespace SevenZipExtractor
 
         protected void Dispose(bool disposing)
         {
-            if (this.archiveStream != null)
-            {
-                this.archiveStream.Dispose();
-            }
+            this.archiveStream?.Dispose();
 
             if (this.archive != null)
             {
                 Marshal.ReleaseComObject(this.archive);
             }
 
-            if (this.sevenZipHandle != null)
-            {
-                this.sevenZipHandle.Dispose();
-            }
+            this.sevenZipHandle?.Dispose();
         }
 
         public void Dispose()
