@@ -164,8 +164,10 @@ namespace SevenZipExtractor
                 streamCallback.ReadProgress += StreamCallback_ReadProperty;
 
                 this.archive.Extract(null, 0xFFFFFFFF, 0, streamCallback);
+                Token.ThrowIfCancellationRequested();
                 streamCallback.ReadProgress -= StreamCallback_ReadProperty;
             }
+            catch (Exception) { throw; }
             finally
             {
                 foreach (CancellableFileStream stream in fileStreams)
