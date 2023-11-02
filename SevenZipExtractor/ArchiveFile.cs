@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -37,7 +36,6 @@ namespace SevenZipExtractor
         private readonly InStreamWrapper archiveStream;
         private IList<Entry> entries;
         private int TotalCount;
-        private CultureInfo culture = CultureInfo.CurrentCulture;
 
         private string libraryFilePath;
         public event EventHandler<ExtractProgressProp> ExtractProgress;
@@ -438,10 +436,12 @@ namespace SevenZipExtractor
         {
             this.archiveStream?.Dispose();
 
+#if !NET8_0_OR_GREATER
             if (this.archive != null)
             {
                 Marshal.ReleaseComObject(this.archive);
             }
+#endif
 
             this.sevenZipHandle?.Dispose();
         }

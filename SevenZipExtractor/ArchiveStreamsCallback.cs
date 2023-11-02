@@ -1,21 +1,25 @@
-﻿using System.Collections.Generic;
-using System.IO;
-using System;
+﻿using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace SevenZipExtractor
 {
-    public class FileProgressProperty
+    internal class FileProgressProperty
     {
         public ulong StartRead { get; set; }
         public ulong EndRead { get; set; }
         public int Count { get; set; }
     }
-    public class FileStatusProperty
+
+    internal class FileStatusProperty
     {
         public string Name { get; set; }
     }
 
-    internal class ArchiveStreamsCallback : IArchiveExtractCallback
+#if NET8_0_OR_GREATER
+    [GeneratedComClass]
+#endif
+    internal partial class ArchiveStreamsCallback : IArchiveExtractCallback
     {
         private readonly IList<CancellableFileStream> streams;
 
@@ -29,7 +33,7 @@ namespace SevenZipExtractor
         private string CurrentName = "";
         private int Count = 0;
 
-        public ArchiveStreamsCallback(IList<CancellableFileStream> streams) 
+        public ArchiveStreamsCallback(IList<CancellableFileStream> streams)
         {
             this.streams = streams;
         }
@@ -37,7 +41,7 @@ namespace SevenZipExtractor
         public void SetTotal(ulong total)
         {
             TotalSize = total;
-            UpdateProgress(new FileProgressProperty { StartRead = TotalRead, EndRead = TotalSize, Count = Count } );
+            UpdateProgress(new FileProgressProperty { StartRead = TotalRead, EndRead = TotalSize, Count = Count });
         }
 
         public void SetCompleted(ref ulong completeValue)
@@ -60,7 +64,7 @@ namespace SevenZipExtractor
                 return 0;
             }
 
-            CancellableFileStream stream = this.streams[(int) index];
+            CancellableFileStream stream = this.streams[(int)index];
 
             if (stream == null)
             {

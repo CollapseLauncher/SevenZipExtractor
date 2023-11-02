@@ -1,9 +1,12 @@
-using System;
 using System.IO;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace SevenZipExtractor
 {
-    internal class ArchiveFileCallback : IArchiveExtractCallback
+#if NET8_0_OR_GREATER
+    [GeneratedComClass]
+#endif
+    internal partial class ArchiveFileCallback : IArchiveExtractCallback
     {
         private readonly string fileName;
         private readonly uint fileNumber;

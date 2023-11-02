@@ -1,19 +1,24 @@
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace SevenZipExtractor
 {
-    [ComImport]
     [Guid("23170F69-40C1-278A-0000-000600200000")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    internal interface IArchiveExtractCallback //: IProgress
+#if NET8_0_OR_GREATER
+    [GeneratedComInterface]
+#else
+    [ComImport]
+#endif
+    internal partial interface IArchiveExtractCallback //: IProgress
     {
         void SetTotal(ulong total);
-        void SetCompleted([In] ref ulong completeValue);
+        void SetCompleted(ref ulong completeValue);
 
         [PreserveSig]
         int GetStream(
             uint index,
-            [MarshalAs(UnmanagedType.Interface)] out ISequentialOutStream outStream,
+            out ISequentialOutStream outStream,
             AskMode askExtractMode);
         // GetStream OUT: S_OK - OK, S_FALSE - skeep this file
 

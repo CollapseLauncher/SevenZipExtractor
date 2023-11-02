@@ -1,6 +1,7 @@
-﻿using System;
+﻿using Microsoft.Win32.SafeHandles;
+#if !NET5_0_OR_GREATER
 using System.Runtime.ConstrainedExecution;
-using Microsoft.Win32.SafeHandles;
+#endif
 
 namespace SevenZipExtractor
 {
@@ -12,7 +13,9 @@ namespace SevenZipExtractor
 
         /// <summary>Release library handle</summary>
         /// <returns>true if the handle was released</returns>
+#if !NET5_0_OR_GREATER
         [ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success)]
+#endif
         protected override bool ReleaseHandle()
         {
             return Kernel32Dll.FreeLibrary(this.handle);
