@@ -3,7 +3,6 @@
 		<TargetFrameworks>net8.0</TargetFrameworks>
 		<AssemblyTitle>SevenZipWrapper</AssemblyTitle>
 		<Product>SevenZipWrapper</Product>
-		<IsTrimmable>false</IsTrimmable>
 		<PublishTrimmed>false</PublishTrimmed>
 		<BuiltInComInteropSupport>true</BuiltInComInteropSupport>
 		<Description>C# wrapper for 7z.dll (included)</Description>
