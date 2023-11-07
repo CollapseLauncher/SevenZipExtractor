@@ -4,7 +4,6 @@
 		<AssemblyTitle>SevenZipWrapper</AssemblyTitle>
 		<Product>SevenZipWrapper</Product>
 		<PublishTrimmed>false</PublishTrimmed>
-		<BuiltInComInteropSupport>true</BuiltInComInteropSupport>
 		<Description>C# wrapper for 7z.dll (included)</Description>
 		<Copyright>Copyright 2022</Copyright>
 		<Version>1.0.16</Version>

@@ -34,7 +34,7 @@ namespace SevenZipExtractor
         private SevenZipHandle sevenZipHandle;
         private readonly IInArchive archive;
         private readonly InStreamWrapper archiveStream;
-        private IList<Entry> entries;
+        private List<Entry> entries;
         private int TotalCount;
 
         private string libraryFilePath;

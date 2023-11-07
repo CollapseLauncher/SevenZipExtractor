@@ -16,9 +16,7 @@ namespace SevenZipExtractor
         public string Name { get; set; }
     }
 
-#if NET8_0_OR_GREATER
     [GeneratedComClass]
-#endif
     internal partial class ArchiveStreamsCallback : IArchiveExtractCallback
     {
         private readonly IList<CancellableFileStream> streams;

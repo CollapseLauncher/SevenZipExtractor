@@ -3,9 +3,7 @@ using System.Runtime.InteropServices.Marshalling;
 
 namespace SevenZipExtractor
 {
-#if NET8_0_OR_GREATER
     [GeneratedComClass]
-#endif
     internal partial class ArchiveStreamCallback : IArchiveExtractCallback
     {
         private readonly uint fileNumber;

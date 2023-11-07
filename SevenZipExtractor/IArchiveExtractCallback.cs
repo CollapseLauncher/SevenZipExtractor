@@ -5,11 +5,7 @@ namespace SevenZipExtractor
 {
     [Guid("23170F69-40C1-278A-0000-000600200000")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-#if NET8_0_OR_GREATER
     [GeneratedComInterface]
-#else
-    [ComImport]
-#endif
     internal partial interface IArchiveExtractCallback //: IProgress
     {
         void SetTotal(ulong total);
