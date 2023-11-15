@@ -4,17 +4,16 @@ using System.Security;
 
 namespace SevenZipExtractor
 {
-    internal static class Kernel32Dll
+    internal static partial class Kernel32Dll
     {
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        internal static extern SafeLibraryHandle LoadLibrary([MarshalAs(UnmanagedType.LPTStr)] string lpFileName);
+        [LibraryImport("kernel32.dll", EntryPoint = "LoadLibraryW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+        internal static partial IntPtr LoadLibrary(string lpFileName);
 
-        [DllImport("kernel32.dll", CharSet = CharSet.Ansi, SetLastError = true)]
-        internal static extern IntPtr GetProcAddress(SafeLibraryHandle hModule, [MarshalAs(UnmanagedType.LPStr)] string procName);
+        [LibraryImport("kernel32.dll", EntryPoint = "GetProcAddress", SetLastError = true, StringMarshalling = StringMarshalling.Utf8)]
+        internal static partial IntPtr GetProcAddress(IntPtr hModule, string procName);
 
-        [SuppressUnmanagedCodeSecurity]
-        [DllImport("kernel32.dll")]
+        [LibraryImport("kernel32.dll", EntryPoint = "FreeLibrary")]
         [return: MarshalAs(UnmanagedType.Bool)]
-        internal static extern bool FreeLibrary(IntPtr hModule);
+        internal static partial bool FreeLibrary(IntPtr hModule);
     }
 }

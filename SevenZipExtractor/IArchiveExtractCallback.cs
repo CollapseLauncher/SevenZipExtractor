@@ -9,12 +9,12 @@ namespace SevenZipExtractor
     internal partial interface IArchiveExtractCallback //: IProgress
     {
         void SetTotal(ulong total);
-        void SetCompleted(ref ulong completeValue);
+        void SetCompleted(in ulong completeValue);
 
         [PreserveSig]
         int GetStream(
             uint index,
-            out ISequentialOutStream outStream,
+            [MarshalAs(UnmanagedType.Interface)] out ISequentialOutStream outStream,
             AskMode askExtractMode);
         // GetStream OUT: S_OK - OK, S_FALSE - skeep this file
 

@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace SevenZipExtractor
 {
-    internal class CancellableFileStream : Stream
+    internal sealed class CancellableFileStream : Stream
     {
         private FileStream targetStream;
         private CancellationToken cancelToken;

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace SevenZipExtractor
 {
-    public class Formats
+    public static class Formats
     {
         internal static readonly Dictionary<string, SevenZipFormat> ExtensionFormatMapping = new Dictionary<string, SevenZipFormat>
         {

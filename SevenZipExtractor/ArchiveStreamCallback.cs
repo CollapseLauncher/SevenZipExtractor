@@ -4,7 +4,7 @@ using System.Runtime.InteropServices.Marshalling;
 namespace SevenZipExtractor
 {
     [GeneratedComClass]
-    internal partial class ArchiveStreamCallback : IArchiveExtractCallback
+    internal sealed partial class ArchiveStreamCallback : IArchiveExtractCallback
     {
         private readonly uint fileNumber;
         private readonly Stream stream;
@@ -19,7 +19,7 @@ namespace SevenZipExtractor
         {
         }
 
-        public void SetCompleted(ref ulong completeValue)
+        public void SetCompleted(in ulong completeValue)
         {
         }
 

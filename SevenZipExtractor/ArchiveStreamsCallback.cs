@@ -4,20 +4,20 @@ using System.Runtime.InteropServices.Marshalling;
 
 namespace SevenZipExtractor
 {
-    internal class FileProgressProperty
+    internal sealed class FileProgressProperty
     {
         public ulong StartRead { get; set; }
         public ulong EndRead { get; set; }
         public int Count { get; set; }
     }
 
-    internal class FileStatusProperty
+    internal sealed class FileStatusProperty
     {
         public string Name { get; set; }
     }
 
     [GeneratedComClass]
-    internal partial class ArchiveStreamsCallback : IArchiveExtractCallback
+    internal sealed partial class ArchiveStreamsCallback : IArchiveExtractCallback
     {
         private readonly IList<CancellableFileStream> streams;
 
@@ -42,7 +42,7 @@ namespace SevenZipExtractor
             UpdateProgress(new FileProgressProperty { StartRead = TotalRead, EndRead = TotalSize, Count = Count });
         }
 
-        public void SetCompleted(ref ulong completeValue)
+        public void SetCompleted(in ulong completeValue)
         {
             TotalRead = completeValue;
             UpdateProgress(new FileProgressProperty { StartRead = TotalRead, EndRead = TotalSize, Count = Count });

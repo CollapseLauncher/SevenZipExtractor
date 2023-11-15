@@ -3,7 +3,7 @@ using System.IO;
 
 namespace SevenZipExtractor
 {
-    public class Entry
+    public sealed class Entry
     {
         private readonly IInArchive archive;
         private readonly uint index;

@@ -116,7 +116,7 @@ namespace SevenZipExtractor
     [GeneratedComInterface]
     internal partial interface IProgress
     {
-        void SetTotal(ulong total);
+        void SetTotal(in ulong total);
         void SetCompleted(ref ulong completeValue);
     }
 
@@ -176,7 +176,7 @@ namespace SevenZipExtractor
         [PreserveSig]
         int GetStream(
             [MarshalAs(UnmanagedType.LPWStr)] string name,
-            out IInStream inStream);
+            [MarshalAs(UnmanagedType.Interface)] out IInStream inStream);
     }
 
     [Guid("23170F69-40C1-278A-0000-000600400000")]
@@ -184,6 +184,7 @@ namespace SevenZipExtractor
     [GeneratedComInterface]
     internal partial interface IInArchiveGetStream
     {
+        [return: MarshalAs(UnmanagedType.Interface)]
         ISequentialInStream GetStream(uint index);
     }
 
@@ -326,8 +327,8 @@ namespace SevenZipExtractor
         [PreserveSig]
         int Open(
             IInStream stream,
-            ref ulong maxCheckStartPosition,
-            IArchiveOpenCallback openArchiveCallback);
+            in ulong maxCheckStartPosition,
+            [MarshalAs(UnmanagedType.Interface)] IArchiveOpenCallback openArchiveCallback);
 
         void Close();
         //void GetNumberOfItems([In] ref uint numItem);
@@ -343,7 +344,7 @@ namespace SevenZipExtractor
             [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] uint[] indices, //[In] ref uint indices,
             uint numItems,
             int testMode,
-            IArchiveExtractCallback extractCallback);
+            [MarshalAs(UnmanagedType.Interface)] IArchiveExtractCallback extractCallback);
 
         // indices must be sorted 
         // numItems = 0xFFFFFFFF means all files

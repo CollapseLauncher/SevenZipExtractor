@@ -2,7 +2,7 @@
 
 namespace SevenZipExtractor
 {
-    public class SevenZipException : Exception
+    public sealed class SevenZipException : Exception
     {
         public SevenZipException(string message) : base(message)
         {

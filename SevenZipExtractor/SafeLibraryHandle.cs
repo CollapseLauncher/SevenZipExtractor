@@ -1,7 +1,4 @@
 ﻿using Microsoft.Win32.SafeHandles;
-#if !NET5_0_OR_GREATER
-using System.Runtime.ConstrainedExecution;
-#endif
 
 namespace SevenZipExtractor
 {

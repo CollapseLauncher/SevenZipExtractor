@@ -8,29 +8,29 @@ using System.Threading;
 
 namespace SevenZipExtractor
 {
-    public class ArchiveFile : IDisposable
+    public sealed class ExtractProgressProp
     {
-        public class ExtractProgressProp
+        public ExtractProgressProp(ulong Read, ulong TotalRead, ulong TotalSize, double TotalSecond, int Count, int TotalCount)
         {
-            public ExtractProgressProp(ulong Read, ulong TotalRead, ulong TotalSize, double TotalSecond, int Count, int TotalCount)
-            {
-                this.Read = Read;
-                this.TotalRead = TotalRead;
-                this.TotalSize = TotalSize;
-                this.Speed = (ulong)(TotalRead / TotalSecond);
-                this.Count = Count;
-                this.TotalCount = TotalCount;
-            }
-            public int Count { get; set; }
-            public int TotalCount { get; set; }
-            public ulong Read { get; private set; }
-            public ulong TotalRead { get; private set; }
-            public ulong TotalSize { get; private set; }
-            public ulong Speed { get; private set; }
-            public double PercentProgress => (TotalRead / (double)TotalSize) * 100;
-            public TimeSpan TimeLeft => TimeSpan.FromSeconds((TotalSize - TotalRead) / Speed);
+            this.Read = Read;
+            this.TotalRead = TotalRead;
+            this.TotalSize = TotalSize;
+            this.Speed = (ulong)(TotalRead / TotalSecond);
+            this.Count = Count;
+            this.TotalCount = TotalCount;
         }
+        public int Count { get; set; }
+        public int TotalCount { get; set; }
+        public ulong Read { get; private set; }
+        public ulong TotalRead { get; private set; }
+        public ulong TotalSize { get; private set; }
+        public ulong Speed { get; private set; }
+        public double PercentProgress => (TotalRead / (double)TotalSize) * 100;
+        public TimeSpan TimeLeft => TimeSpan.FromSeconds((TotalSize - TotalRead) / Speed);
+    }
 
+    public sealed class ArchiveFile : IDisposable
+    {
         private SevenZipHandle sevenZipHandle;
         private readonly IInArchive archive;
         private readonly InStreamWrapper archiveStream;
@@ -43,9 +43,7 @@ namespace SevenZipExtractor
 
         public ArchiveFile(string archiveFilePath, string libraryFilePath = null)
         {
-
             this.libraryFilePath = libraryFilePath;
-
             this.InitializeAndValidateLibrary();
 
             if (!File.Exists(archiveFilePath))
@@ -76,7 +74,6 @@ namespace SevenZipExtractor
         public ArchiveFile(Stream archiveStream, SevenZipFormat? format = null, string libraryFilePath = null)
         {
             this.libraryFilePath = libraryFilePath;
-
             this.InitializeAndValidateLibrary();
 
             if (archiveStream == null)
@@ -197,7 +194,7 @@ namespace SevenZipExtractor
                 e.StartRead, e.EndRead, ExtractProgressStopwatch.Elapsed.TotalSeconds, e.Count, TotalCount));
         }
 
-        public IList<Entry> Entries
+        public List<Entry> Entries
         {
             get
             {
@@ -207,7 +204,7 @@ namespace SevenZipExtractor
                 }
 
                 ulong checkPos = 32 * 1024;
-                int open = this.archive.Open(this.archiveStream, ref checkPos, null);
+                int open = this.archive.Open(this.archiveStream, checkPos, null);
 
                 if (open != 0)
                 {
@@ -269,7 +266,7 @@ namespace SevenZipExtractor
             }
             catch (InvalidCastException)
             {
-                return default(T);
+                return default;
             }
         }
 
@@ -290,14 +287,13 @@ namespace SevenZipExtractor
             if (propVariant.VarType == VarEnum.VT_EMPTY)
             {
                 propVariant.Clear();
-                return default(T);
+                return default;
             }
 
             propVariant.Clear();
-
             if (value == null)
             {
-                return default(T);
+                return default;
             }
 
             Type type = typeof(T);
@@ -427,28 +423,18 @@ namespace SevenZipExtractor
             return false;
         }
 
-        ~ArchiveFile()
-        {
-            this.Dispose(false);
-        }
-
-        protected void Dispose(bool disposing)
-        {
-            this.archiveStream?.Dispose();
-
-#if !NET8_0_OR_GREATER
-            if (this.archive != null)
-            {
-                Marshal.ReleaseComObject(this.archive);
-            }
-#endif
-
-            this.sevenZipHandle?.Dispose();
-        }
+        ~ArchiveFile() => this.Dispose();
 
         public void Dispose()
         {
-            this.Dispose(true);
+            this.archiveStream?.Dispose();
+
+            if (this.archive != null)
+            {
+                this.archive.Close();
+            }
+
+            this.sevenZipHandle?.Dispose();
             GC.SuppressFinalize(this);
         }
     }
