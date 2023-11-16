@@ -33,14 +33,12 @@ namespace SevenZipExtractor
             }
 
             string fileDir = Path.GetDirectoryName(this.fileName);
-
             if (!string.IsNullOrEmpty(fileDir))
             {
                 Directory.CreateDirectory(fileDir);
             }
 
             this.fileStream = new OutStreamWrapper(File.Create(this.fileName));
-
             outStream = this.fileStream;
 
             return 0;

@@ -122,7 +122,7 @@ namespace SevenZipExtractor
 
         public void Extract(Func<Entry, string> getOutputPath, CancellationToken Token = new CancellationToken())
         {
-            IList<CancellableFileStream> fileStreams = new List<CancellableFileStream>();
+            List<CancellableFileStream> fileStreams = new List<CancellableFileStream>();
             ArchiveStreamsCallback streamCallback;
 
             try
@@ -165,6 +165,7 @@ namespace SevenZipExtractor
             catch (Exception) { throw; }
             finally
             {
+                ExtractProgressStopwatch.Stop();
                 foreach (CancellableFileStream stream in fileStreams)
                 {
                     if (stream != null)
@@ -432,6 +433,7 @@ namespace SevenZipExtractor
             if (this.archive != null)
             {
                 this.archive.Close();
+                Marshal.ReleaseComObject(this.archive);
             }
 
             this.sevenZipHandle?.Dispose();

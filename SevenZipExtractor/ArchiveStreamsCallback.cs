@@ -19,7 +19,7 @@ namespace SevenZipExtractor
     [GeneratedComClass]
     internal sealed partial class ArchiveStreamsCallback : IArchiveExtractCallback
     {
-        private readonly IList<CancellableFileStream> streams;
+        private readonly List<CancellableFileStream> streams;
 
         public event EventHandler<FileProgressProperty> ReadProgress;
         public event EventHandler<FileStatusProperty> ReadStatus;
@@ -31,7 +31,7 @@ namespace SevenZipExtractor
         private string CurrentName = "";
         private int Count = 0;
 
-        public ArchiveStreamsCallback(IList<CancellableFileStream> streams)
+        public ArchiveStreamsCallback(List<CancellableFileStream> streams)
         {
             this.streams = streams;
         }
@@ -77,7 +77,6 @@ namespace SevenZipExtractor
             }
 
             outStream = new OutStreamWrapper(stream);
-
             return 0;
         }
 
