@@ -1,64 +1,52 @@
 using System;
-using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace SevenZipExtractor
 {
-    internal sealed class SevenZipHandle : IDisposable
+    // This code was taken from .NET 8 DllImport's generated codes
+    internal static class SevenZipHandle
     {
-        private IntPtr sevenZipSafeHandle;
+        private const string DLL_PATH = "Lib\\7z.dll";
 
-        public SevenZipHandle(string sevenZipLibPath)
+        [DllImport(DLL_PATH, EntryPoint = "CreateObject", ExactSpelling = true)]
+        private static extern unsafe int PInvoke(Guid* classID_native, Guid* interfaceID_native, void** outObject_native);
+
+        private static unsafe int CreateObjectDelegate(ref Guid classID, ref Guid interfaceID, out IInArchive outObject)
         {
-            this.sevenZipSafeHandle = Kernel32Dll.LoadLibrary(sevenZipLibPath);
-            if (this.sevenZipSafeHandle == IntPtr.Zero)
+            bool invokeSucceeded = default;
+            Unsafe.SkipInit(out outObject);
+            void* outObject_native = default;
+            int retVal = default;
+            try
             {
-                throw new Win32Exception();
+                fixed (Guid* interfaceID_native = &interfaceID)
+                fixed (Guid* classID_native = &classID)
+                {
+                    retVal = PInvoke(classID_native, interfaceID_native, &outObject_native);
+                }
+
+                invokeSucceeded = true;
+                outObject = ComInterfaceMarshaller<IInArchive>.ConvertToManaged(outObject_native);
+            }
+            finally
+            {
+                if (invokeSucceeded)
+                {
+                    ComInterfaceMarshaller<IInArchive>.Free(outObject_native);
+                }
             }
 
-            IntPtr functionPtr = Kernel32Dll.GetProcAddress(this.sevenZipSafeHandle, "GetHandlerProperty");
-            if (functionPtr == IntPtr.Zero)
-            {
-                Kernel32Dll.FreeLibrary(this.sevenZipSafeHandle);
-                // this.sevenZipSafeHandle.Close();
-                throw new ArgumentException();
-            }
+            return retVal;
         }
 
-        ~SevenZipHandle()
+        internal static IInArchive CreateInArchive(Guid classId)
         {
-            this.Dispose(false);
-        }
-
-        private void Dispose(bool disposing)
-        {
-            if (this.sevenZipSafeHandle != IntPtr.Zero)
-            {
-                Kernel32Dll.FreeLibrary(this.sevenZipSafeHandle);
-                // this.sevenZipSafeHandle.Close();
-            }
-
-            this.sevenZipSafeHandle = IntPtr.Zero;
-        }
-
-        public void Dispose()
-        {
-            this.Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        public IInArchive CreateInArchive(Guid classId)
-        {
-            if (this.sevenZipSafeHandle == IntPtr.Zero) throw new ObjectDisposedException("SevenZipHandle");
-
-            IntPtr procAddress = Kernel32Dll.GetProcAddress(this.sevenZipSafeHandle, "CreateObject");
-            CreateObjectDelegate createObject = (CreateObjectDelegate)Marshal.GetDelegateForFunctionPointer(procAddress, typeof(CreateObjectDelegate));
-
-            object result;
             Guid interfaceId = typeof(IInArchive).GUID;
-            createObject(ref classId, ref interfaceId, out result);
+            CreateObjectDelegate(ref classId, ref interfaceId, out IInArchive result);
 
-            return (IInArchive)result;
+            return result;
         }
     }
 }

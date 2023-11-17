@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 
 namespace SevenZipExtractor
 {
@@ -86,7 +87,7 @@ namespace SevenZipExtractor
         /// </summary>
         public bool IsSplitAfter { get; set; }
 
-        public void Extract(string fileName, bool preserveTimestamp = true)
+        public void Extract(string fileName, bool preserveTimestamp = true, CancellationToken cancellationToken = default)
         {
             if (this.IsFolder)
             {
@@ -103,7 +104,7 @@ namespace SevenZipExtractor
 
             using (FileStream fileStream = File.Create(fileName))
             {
-                this.Extract(fileStream);
+                this.Extract(fileStream, cancellationToken);
             }
 
             if (preserveTimestamp)
@@ -111,9 +112,10 @@ namespace SevenZipExtractor
                 File.SetLastWriteTime(fileName, this.LastWriteTime);
             }
         }
-        public void Extract(Stream stream)
+
+        public void Extract(Stream stream, CancellationToken cancellationToken)
         {
-            this.archive.Extract(new[] { this.index }, 1, 0, new ArchiveStreamCallback(this.index, stream));
+            this.archive.Extract(new[] { this.index }, 1, 0, new ArchiveStreamCallback(this.index, stream, cancellationToken));
         }
     }
 }

@@ -19,7 +19,19 @@
 	<ItemGroup>
 		<Compile Remove="x64\**" />
 		<EmbeddedResource Remove="x64\**" />
+		<None Remove="Lib\7z.dll" />
 		<None Remove="SevenZipExtractor.targets" />
 		<None Remove="x64" />
 	</ItemGroup>
+
+	<ItemGroup>
+	  <Content Include="Lib\7z.dll">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Content>
+	</ItemGroup>
+	
+	<PropertyGroup Condition="'$(Configuration)'=='Release'">
+		<Optimize>True</Optimize>
+		<DebugType>portable</DebugType>
+	</PropertyGroup>
 </Project>

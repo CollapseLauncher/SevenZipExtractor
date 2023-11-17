@@ -8,7 +8,7 @@ using System.Threading;
 
 namespace SevenZipExtractor
 {
-    public sealed class ExtractProgressProp
+    public struct ExtractProgressProp
     {
         public ExtractProgressProp(ulong Read, ulong TotalRead, ulong TotalSize, double TotalSecond, int Count, int TotalCount)
         {
@@ -31,26 +31,16 @@ namespace SevenZipExtractor
 
     public sealed class ArchiveFile : IDisposable
     {
-        private SevenZipHandle sevenZipHandle;
         private readonly IInArchive archive;
         private readonly InStreamWrapper archiveStream;
         private List<Entry> entries;
         private int TotalCount;
 
-        private string libraryFilePath;
         public event EventHandler<ExtractProgressProp> ExtractProgress;
         public void UpdateProgress(ExtractProgressProp e) => ExtractProgress?.Invoke(this, e);
 
         public ArchiveFile(string archiveFilePath, string libraryFilePath = null)
         {
-            this.libraryFilePath = libraryFilePath;
-            this.InitializeAndValidateLibrary();
-
-            if (!File.Exists(archiveFilePath))
-            {
-                throw new SevenZipException("Archive file not found");
-            }
-
             SevenZipFormat format;
             string extension = Path.GetExtension(archiveFilePath);
 
@@ -67,15 +57,12 @@ namespace SevenZipExtractor
                 throw new SevenZipException(Path.GetFileName(archiveFilePath) + " is not a known archive type");
             }
 
-            this.archive = this.sevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format]);
+            this.archive = SevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format]);
             this.archiveStream = new InStreamWrapper(File.OpenRead(archiveFilePath));
         }
 
         public ArchiveFile(Stream archiveStream, SevenZipFormat? format = null, string libraryFilePath = null)
         {
-            this.libraryFilePath = libraryFilePath;
-            this.InitializeAndValidateLibrary();
-
             if (archiveStream == null)
             {
                 throw new SevenZipException("archiveStream is null");
@@ -95,7 +82,7 @@ namespace SevenZipExtractor
                 }
             }
 
-            this.archive = this.sevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format.Value]);
+            this.archive = SevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format.Value]);
             this.archiveStream = new InStreamWrapper(archiveStream);
             this.TotalCount = Entries.Sum(x => x.IsFolder ? 0 : 1);
         }
@@ -122,7 +109,7 @@ namespace SevenZipExtractor
 
         public void Extract(Func<Entry, string> getOutputPath, CancellationToken Token = new CancellationToken())
         {
-            List<CancellableFileStream> fileStreams = new List<CancellableFileStream>();
+            List<FileStream> fileStreams = new List<FileStream>();
             ArchiveStreamsCallback streamCallback;
 
             try
@@ -151,10 +138,10 @@ namespace SevenZipExtractor
                         Directory.CreateDirectory(directoryName);
                     }
 
-                    fileStreams.Add(new CancellableFileStream(File.Create(outputPath), Token));
+                    fileStreams.Add(File.Create(outputPath));
                 }
 
-                streamCallback = new ArchiveStreamsCallback(fileStreams);
+                streamCallback = new ArchiveStreamsCallback(fileStreams, Token);
                 ExtractProgressStopwatch = Stopwatch.StartNew();
                 streamCallback.ReadProgress += StreamCallback_ReadProperty;
 
@@ -166,13 +153,8 @@ namespace SevenZipExtractor
             finally
             {
                 ExtractProgressStopwatch.Stop();
-                foreach (CancellableFileStream stream in fileStreams)
-                {
-                    if (stream != null)
-                    {
-                        stream.Dispose();
-                    }
-                }
+                fileStreams.ForEach(x => x?.Dispose());
+                fileStreams.Clear();
             }
         }
 
@@ -307,54 +289,6 @@ namespace SevenZipExtractor
             return result;
         }
 
-        private void InitializeAndValidateLibrary()
-        {
-            if (string.IsNullOrWhiteSpace(this.libraryFilePath))
-            {
-                string currentArchitecture = IntPtr.Size == 4 ? "x86" : "x64"; // magic check
-
-                if (File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "7z-" + currentArchitecture + ".dll")))
-                {
-                    this.libraryFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "7z-" + currentArchitecture + ".dll");
-                }
-                else if (File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin", "7z-" + currentArchitecture + ".dll")))
-                {
-                    this.libraryFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin", "7z-" + currentArchitecture + ".dll");
-                }
-                else if (File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin", currentArchitecture, "7z.dll")))
-                {
-                    this.libraryFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin", currentArchitecture, "7z.dll");
-                }
-                else if (File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, currentArchitecture, "7z.dll")))
-                {
-                    this.libraryFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, currentArchitecture, "7z.dll");
-                }
-                else if (File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "7-Zip", "7z.dll")))
-                {
-                    this.libraryFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "7-Zip", "7z.dll");
-                }
-            }
-
-            if (string.IsNullOrWhiteSpace(this.libraryFilePath))
-            {
-                throw new SevenZipException("libraryFilePath not set");
-            }
-
-            if (!File.Exists(this.libraryFilePath))
-            {
-                throw new SevenZipException("7z.dll not found");
-            }
-
-            try
-            {
-                this.sevenZipHandle = new SevenZipHandle(this.libraryFilePath);
-            }
-            catch (Exception e)
-            {
-                throw new SevenZipException("Unable to initialize SevenZipHandle", e);
-            }
-        }
-
         private bool GuessFormatFromExtension(string fileExtension, out SevenZipFormat format)
         {
             if (string.IsNullOrWhiteSpace(fileExtension))
@@ -431,12 +365,8 @@ namespace SevenZipExtractor
             this.archiveStream?.Dispose();
 
             if (this.archive != null)
-            {
                 this.archive.Close();
-                Marshal.ReleaseComObject(this.archive);
-            }
 
-            this.sevenZipHandle?.Dispose();
             GC.SuppressFinalize(this);
         }
     }
