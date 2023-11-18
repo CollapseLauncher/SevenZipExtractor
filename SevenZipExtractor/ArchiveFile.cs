@@ -110,7 +110,7 @@ namespace SevenZipExtractor
         public void Extract(Func<Entry, string> getOutputPath, CancellationToken Token = new CancellationToken())
         {
             List<FileStream> fileStreams = new List<FileStream>();
-            ArchiveStreamsCallback streamCallback;
+            ArchiveStreamsCallback streamCallback = null;
 
             try
             {
@@ -141,13 +141,12 @@ namespace SevenZipExtractor
                     fileStreams.Add(File.Create(outputPath));
                 }
 
-                streamCallback = new ArchiveStreamsCallback(fileStreams, Token);
                 ExtractProgressStopwatch = Stopwatch.StartNew();
+                streamCallback = new ArchiveStreamsCallback(fileStreams, Token);
                 streamCallback.ReadProgress += StreamCallback_ReadProperty;
 
                 this.archive.Extract(null, 0xFFFFFFFF, 0, streamCallback);
                 Token.ThrowIfCancellationRequested();
-                streamCallback.ReadProgress -= StreamCallback_ReadProperty;
             }
             catch (Exception) { throw; }
             finally
@@ -155,6 +154,7 @@ namespace SevenZipExtractor
                 ExtractProgressStopwatch.Stop();
                 fileStreams.ForEach(x => x?.Dispose());
                 fileStreams.Clear();
+                streamCallback.ReadProgress -= StreamCallback_ReadProperty;
             }
         }
 

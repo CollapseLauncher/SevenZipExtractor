@@ -8,7 +8,7 @@ namespace SevenZipExtractor
     // This code was taken from .NET 8 DllImport's generated codes
     internal static class SevenZipHandle
     {
-        private const string DLL_PATH = "Lib\\7zxa.dll";
+        private const string DLL_PATH = "Lib\\7z.dll";
 
         [DllImport(DLL_PATH, EntryPoint = "CreateObject", ExactSpelling = true)]
         private static extern unsafe int PInvoke(Guid* classID_native, Guid* interfaceID_native, void** outObject_native);
