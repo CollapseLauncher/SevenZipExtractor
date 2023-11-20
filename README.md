@@ -1,5 +1,5 @@
 # SevenZipExtractor
-C# wrapper for 7z.dll (x86 and x64 included). Due to compatibilities with "Source Generated" COM Interop, this fork only works with .NET 8.<br/>
+C# wrapper for 7z.dll (x86 and x64 included). Due to a compatibility issue with "Source Generated" COM Interop, this fork only works with .NET 8.<br/>
 This fork has been modified to work with [**NativeAOT**](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/?tabs=net8plus%2Cwindows) and [**ILTrimming**](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/trimming-options?pivots=dotnet-8-0) on .NET 8. This fork also adds other features such as:
 - Cancellable extraction
 - Progress event
