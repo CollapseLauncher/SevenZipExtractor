@@ -312,27 +312,74 @@ namespace SevenZipExtractor
             }
         }
 
+        private int SearchMaxSignatureLength()
+        {
+            int maxLen = 0;
+            foreach (FormatProperties format in Formats.FileSignatures.Values)
+            {
+                int len = GetSignatureLength(format);
+                if (len > maxLen) maxLen = len;
+            }
+
+            return maxLen;
+        }
+
+        private int GetSignatureLength(FormatProperties format)
+        {
+            int len = 0;
+            if (format.SignatureOffsets != null)
+                len += format.SignatureOffsets.Max();
+
+            len += format.SignatureData.Length;
+            return len;
+        }
+
         private bool GuessFormatFromSignature(Stream stream, out SevenZipFormat? format)
         {
-            int longestSignature = Formats.FileSignatures.Values.OrderByDescending(v => v.Length).First().Length;
+            int maxLenSignature = SearchMaxSignatureLength();
 
-            byte[] archiveFileSignature = new byte[longestSignature];
-            int bytesRead = stream.Read(archiveFileSignature, 0, longestSignature);
+            if (!stream.CanSeek)
+                throw new SevenZipException("Stream must be seekable to detect the format properly!");
 
-            stream.Position -= bytesRead; // go back o beginning
+            if (maxLenSignature > stream.Length)
+                maxLenSignature = (int)stream.Length;
 
-            if (bytesRead != longestSignature)
+            Span<byte> archiveFileSignature = new byte[maxLenSignature];
+            int bytesRead = stream.ReadAtLeast(archiveFileSignature, maxLenSignature, false);
+
+            stream.Position -= bytesRead;
+
+            if (bytesRead != maxLenSignature)
             {
                 format = SevenZipFormat.Undefined;
                 return false;
             }
 
-            foreach (KeyValuePair<SevenZipFormat, byte[]> pair in Formats.FileSignatures)
+            foreach (KeyValuePair<SevenZipFormat, FormatProperties> pair in Formats.FileSignatures)
             {
-                if (archiveFileSignature.Take(pair.Value.Length).SequenceEqual(pair.Value))
+                int offset = 0;
+                int i = 0;
+                if (pair.Value.SignatureOffsets == null)
                 {
-                    format = pair.Key;
-                    return true;
+                    if (archiveFileSignature.Slice(0, pair.Value.SignatureData.Length).SequenceEqual(pair.Value.SignatureData))
+                    {
+                        format = pair.Key;
+                        return true;
+                    }
+
+                    continue;
+                }
+
+                while (i < pair.Value.SignatureOffsets.Length)
+                {
+                    offset = pair.Value.SignatureOffsets[i];
+                    if (archiveFileSignature.Slice(offset, pair.Value.SignatureData.Length).SequenceEqual(pair.Value.SignatureData))
+                    {
+                        format = pair.Key;
+                        return true;
+                    }
+
+                    i++;
                 }
             }
 
