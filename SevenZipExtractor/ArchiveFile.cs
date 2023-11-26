@@ -41,23 +41,13 @@ namespace SevenZipExtractor
 
         public ArchiveFile(string archiveFilePath, string libraryFilePath = null)
         {
-            SevenZipFormat format;
+            SevenZipFormat? format;
             string extension = Path.GetExtension(archiveFilePath);
 
-            if (this.GuessFormatFromExtension(extension, out format))
-            {
-                // great
-            }
-            else if (this.GuessFormatFromSignature(archiveFilePath, out format))
-            {
-                // success
-            }
-            else
-            {
+            if (!this.GuessFormatFromExtension(extension, out format) || !this.GuessFormatFromSignature(archiveFilePath, out format))
                 throw new SevenZipException(Path.GetFileName(archiveFilePath) + " is not a known archive type");
-            }
 
-            this.archive = SevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format]);
+            this.archive = SevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format.Value]);
             this.archiveStream = new InStreamWrapper(File.OpenRead(archiveFilePath));
         }
 
@@ -70,16 +60,8 @@ namespace SevenZipExtractor
 
             if (format == null)
             {
-                SevenZipFormat guessedFormat;
-
-                if (this.GuessFormatFromSignature(archiveStream, out guessedFormat))
-                {
-                    format = guessedFormat;
-                }
-                else
-                {
+                if (!this.GuessFormatFromSignature(archiveStream, out format))
                     throw new SevenZipException("Unable to guess format automatically");
-                }
             }
 
             this.archive = SevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format.Value]);
@@ -289,7 +271,7 @@ namespace SevenZipExtractor
             return result;
         }
 
-        private bool GuessFormatFromExtension(string fileExtension, out SevenZipFormat format)
+        private bool GuessFormatFromExtension(string fileExtension, out SevenZipFormat? format)
         {
             if (string.IsNullOrWhiteSpace(fileExtension))
             {
@@ -322,7 +304,7 @@ namespace SevenZipExtractor
         }
 
 
-        private bool GuessFormatFromSignature(string filePath, out SevenZipFormat format)
+        private bool GuessFormatFromSignature(string filePath, out SevenZipFormat? format)
         {
             using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
@@ -330,7 +312,7 @@ namespace SevenZipExtractor
             }
         }
 
-        private bool GuessFormatFromSignature(Stream stream, out SevenZipFormat format)
+        private bool GuessFormatFromSignature(Stream stream, out SevenZipFormat? format)
         {
             int longestSignature = Formats.FileSignatures.Values.OrderByDescending(v => v.Length).First().Length;
 
