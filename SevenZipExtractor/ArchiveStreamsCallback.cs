@@ -1,23 +1,28 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
-using System;
+using System.Runtime.InteropServices.Marshalling;
+using System.Threading;
 
 namespace SevenZipExtractor
 {
-    public class FileProgressProperty
+    internal struct FileProgressProperty
     {
-        public ulong StartRead { get; set; }
-        public ulong EndRead { get; set; }
-        public int Count { get; set; }
-    }
-    public class FileStatusProperty
-    {
-        public string Name { get; set; }
+        public ulong StartRead;
+        public ulong EndRead;
+        public int Count;
     }
 
-    internal class ArchiveStreamsCallback : IArchiveExtractCallback
+    internal struct FileStatusProperty
     {
-        private readonly IList<CancellableFileStream> streams;
+        public string Name;
+    }
+
+    [GeneratedComClass]
+    internal sealed partial class ArchiveStreamsCallback : IArchiveExtractCallback
+    {
+        private readonly List<FileStream> streams;
+        private readonly CancellationToken cancellationToken;
 
         public event EventHandler<FileProgressProperty> ReadProgress;
         public event EventHandler<FileStatusProperty> ReadStatus;
@@ -29,18 +34,19 @@ namespace SevenZipExtractor
         private string CurrentName = "";
         private int Count = 0;
 
-        public ArchiveStreamsCallback(IList<CancellableFileStream> streams) 
+        public ArchiveStreamsCallback(List<FileStream> streams, CancellationToken cancellationToken)
         {
             this.streams = streams;
+            this.cancellationToken = cancellationToken;
         }
 
         public void SetTotal(ulong total)
         {
             TotalSize = total;
-            UpdateProgress(new FileProgressProperty { StartRead = TotalRead, EndRead = TotalSize, Count = Count } );
+            UpdateProgress(new FileProgressProperty { StartRead = TotalRead, EndRead = TotalSize, Count = Count });
         }
 
-        public void SetCompleted(ref ulong completeValue)
+        public void SetCompleted(in ulong completeValue)
         {
             TotalRead = completeValue;
             UpdateProgress(new FileProgressProperty { StartRead = TotalRead, EndRead = TotalSize, Count = Count });
@@ -60,7 +66,7 @@ namespace SevenZipExtractor
                 return 0;
             }
 
-            CancellableFileStream stream = this.streams[(int) index];
+            FileStream stream = this.streams[(int)index];
 
             if (stream == null)
             {
@@ -74,8 +80,7 @@ namespace SevenZipExtractor
                 UpdateStatus(new FileStatusProperty { Name = CurrentName });
             }
 
-            outStream = new OutStreamWrapper(stream);
-
+            outStream = new OutStreamWrapper(stream, this.cancellationToken);
             return 0;
         }
 

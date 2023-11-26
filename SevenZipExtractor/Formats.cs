@@ -3,7 +3,13 @@ using System.Collections.Generic;
 
 namespace SevenZipExtractor
 {
-    public class Formats
+    public struct FormatProperties
+    {
+        public int[] SignatureOffsets;
+        public byte[] SignatureData;
+    }
+
+    public static class Formats
     {
         internal static readonly Dictionary<string, SevenZipFormat> ExtensionFormatMapping = new Dictionary<string, SevenZipFormat>
         {
@@ -86,28 +92,29 @@ namespace SevenZipExtractor
             {SevenZipFormat.MachO, new Guid("23170f69-40c1-278a-1000-000110DF0000")}
         };
 
-        internal static Dictionary<SevenZipFormat, byte[]> FileSignatures = new Dictionary<SevenZipFormat, byte[]>
+        internal static Dictionary<SevenZipFormat, FormatProperties> FileSignatures = new Dictionary<SevenZipFormat, FormatProperties>
         {
-            {SevenZipFormat.Rar5, new byte[] {0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x01, 0x00}},
-            {SevenZipFormat.Rar, new byte[] { 0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x00 }},
-            {SevenZipFormat.Vhd, new byte[] { 0x63, 0x6F, 0x6E, 0x65, 0x63, 0x74, 0x69, 0x78 }},
-            {SevenZipFormat.Deb, new byte[] { 0x21, 0x3C, 0x61, 0x72, 0x63, 0x68, 0x3E }},
-            {SevenZipFormat.Dmg, new byte[] { 0x78, 0x01, 0x73, 0x0D, 0x62, 0x62, 0x60 }},
-            {SevenZipFormat.SevenZip, new byte[] { 0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C }},
-            {SevenZipFormat.Tar, new byte[] { 0x75, 0x73, 0x74, 0x61, 0x72 }},
-            {SevenZipFormat.Iso, new byte[] { 0x43, 0x44, 0x30, 0x30, 0x31 }},
-            {SevenZipFormat.Cab, new byte[] { 0x4D, 0x53, 0x43, 0x46 }},
-            {SevenZipFormat.Rpm, new byte[] { 0xed, 0xab, 0xee, 0xdb }},
-            {SevenZipFormat.Xar, new byte[] { 0x78, 0x61, 0x72, 0x21 }},
-            {SevenZipFormat.Chm, new byte[] { 0x49, 0x54, 0x53, 0x46 }},
-            {SevenZipFormat.BZip2, new byte[] { 0x42, 0x5A, 0x68 }},
-            {SevenZipFormat.Flv, new byte[] { 0x46, 0x4C, 0x56 }},
-            {SevenZipFormat.Swf, new byte[] { 0x46, 0x57, 0x53 }},
-            {SevenZipFormat.GZip, new byte[] { 0x1f, 0x0b }},
-            {SevenZipFormat.Zip, new byte[] { 0x50, 0x4b }},
-            {SevenZipFormat.Arj, new byte[] { 0x60, 0xEA }},
-            {SevenZipFormat.Lzh, new byte[] { 0x2D, 0x6C, 0x68 }},
-            {SevenZipFormat.SquashFS, new byte[] {0x68, 0x73, 0x71, 0x73}}
+            {SevenZipFormat.Rar5, new FormatProperties { SignatureData = new byte[] {0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x01, 0x00} }},
+            {SevenZipFormat.Rar, new FormatProperties { SignatureData = new byte[] { 0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x00 } }},
+            {SevenZipFormat.Vhd, new FormatProperties { SignatureData = new byte[] { 0x63, 0x6F, 0x6E, 0x65, 0x63, 0x74, 0x69, 0x78 } }},
+            {SevenZipFormat.Deb, new FormatProperties { SignatureData = new byte[] { 0x21, 0x3C, 0x61, 0x72, 0x63, 0x68, 0x3E } }},
+            {SevenZipFormat.Dmg, new FormatProperties { SignatureData = new byte[] { 0x78, 0x01, 0x73, 0x0D, 0x62, 0x62, 0x60 } }},
+            {SevenZipFormat.SevenZip, new FormatProperties { SignatureData = new byte[] { 0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C } }},
+            {SevenZipFormat.Tar, new FormatProperties { SignatureOffsets = new int[] { 0x101 }, SignatureData = new byte[] { 0x75, 0x73, 0x74, 0x61, 0x72 } }},
+            {SevenZipFormat.Iso, new FormatProperties { SignatureOffsets = new int[] { 0x8001, 0x8801, 0x9001 }, SignatureData = new byte[] { 0x43, 0x44, 0x30, 0x30, 0x31 } }},
+            {SevenZipFormat.Cab, new FormatProperties { SignatureData = new byte[] { 0x4D, 0x53, 0x43, 0x46 } }},
+            {SevenZipFormat.Rpm, new FormatProperties { SignatureData = new byte[] { 0xed, 0xab, 0xee, 0xdb } }},
+            {SevenZipFormat.Xar, new FormatProperties { SignatureData = new byte[] { 0x78, 0x61, 0x72, 0x21 } }},
+            {SevenZipFormat.Chm, new FormatProperties { SignatureData = new byte[] { 0x49, 0x54, 0x53, 0x46 } }},
+            {SevenZipFormat.BZip2, new FormatProperties { SignatureData = new byte[] { 0x42, 0x5A, 0x68 } }},
+            {SevenZipFormat.Flv, new FormatProperties { SignatureData = new byte[] { 0x46, 0x4C, 0x56 } }},
+            {SevenZipFormat.Swf, new FormatProperties { SignatureData = new byte[] { 0x46, 0x57, 0x53 } }},
+            {SevenZipFormat.GZip, new FormatProperties { SignatureData = new byte[] { 0x1f, 0x0b } }},
+            {SevenZipFormat.Zip, new FormatProperties { SignatureData = new byte[] { 0x50, 0x4b } }},
+            {SevenZipFormat.Arj, new FormatProperties { SignatureData = new byte[] { 0x60, 0xEA } }},
+            {SevenZipFormat.Lzh, new FormatProperties { SignatureOffsets = new int[] { 0x2 }, SignatureData = new byte[] { 0x2D, 0x6C, 0x68 } }},
+            {SevenZipFormat.SquashFS, new FormatProperties { SignatureData = new byte[] { 0x68, 0x73, 0x71, 0x73 } }},
+            {SevenZipFormat.Mslz, new FormatProperties { SignatureData = new byte[] { 0x53, 0x5a, 0x44, 0x44 } }}
         };
     }
 }

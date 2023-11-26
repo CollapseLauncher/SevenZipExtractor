@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -9,78 +8,51 @@ using System.Threading;
 
 namespace SevenZipExtractor
 {
-    public class ArchiveFile : IDisposable
+    public struct ExtractProgressProp
     {
-        public class ExtractProgressProp
+        public ExtractProgressProp(ulong Read, ulong TotalRead, ulong TotalSize, double TotalSecond, int Count, int TotalCount)
         {
-            public ExtractProgressProp(ulong Read, ulong TotalRead, ulong TotalSize, double TotalSecond, int Count, int TotalCount)
-            {
-                this.Read = Read;
-                this.TotalRead = TotalRead;
-                this.TotalSize = TotalSize;
-                this.Speed = (ulong)(TotalRead / TotalSecond);
-                this.Count = Count;
-                this.TotalCount = TotalCount;
-            }
-            public int Count { get; set; }
-            public int TotalCount { get; set; }
-            public ulong Read { get; private set; }
-            public ulong TotalRead { get; private set; }
-            public ulong TotalSize { get; private set; }
-            public ulong Speed { get; private set; }
-            public double PercentProgress => (TotalRead / (double)TotalSize) * 100;
-            public TimeSpan TimeLeft => TimeSpan.FromSeconds((TotalSize - TotalRead) / Speed);
+            this.Read = Read;
+            this.TotalRead = TotalRead;
+            this.TotalSize = TotalSize;
+            this.Speed = (ulong)(TotalRead / TotalSecond);
+            this.Count = Count;
+            this.TotalCount = TotalCount;
         }
+        public int Count { get; set; }
+        public int TotalCount { get; set; }
+        public ulong Read { get; private set; }
+        public ulong TotalRead { get; private set; }
+        public ulong TotalSize { get; private set; }
+        public ulong Speed { get; private set; }
+        public double PercentProgress => (TotalRead / (double)TotalSize) * 100;
+        public TimeSpan TimeLeft => TimeSpan.FromSeconds((TotalSize - TotalRead) / Speed);
+    }
 
-        private SevenZipHandle sevenZipHandle;
+    public sealed class ArchiveFile : IDisposable
+    {
         private readonly IInArchive archive;
         private readonly InStreamWrapper archiveStream;
-        private IList<Entry> entries;
+        private List<Entry> entries;
         private int TotalCount;
-        private CultureInfo culture = CultureInfo.CurrentCulture;
 
-        private string libraryFilePath;
         public event EventHandler<ExtractProgressProp> ExtractProgress;
         public void UpdateProgress(ExtractProgressProp e) => ExtractProgress?.Invoke(this, e);
 
         public ArchiveFile(string archiveFilePath, string libraryFilePath = null)
         {
-
-            this.libraryFilePath = libraryFilePath;
-
-            this.InitializeAndValidateLibrary();
-
-            if (!File.Exists(archiveFilePath))
-            {
-                throw new SevenZipException("Archive file not found");
-            }
-
-            SevenZipFormat format;
+            SevenZipFormat? format;
             string extension = Path.GetExtension(archiveFilePath);
 
-            if (this.GuessFormatFromExtension(extension, out format))
-            {
-                // great
-            }
-            else if (this.GuessFormatFromSignature(archiveFilePath, out format))
-            {
-                // success
-            }
-            else
-            {
+            if (!this.GuessFormatFromExtension(extension, out format) || !this.GuessFormatFromSignature(archiveFilePath, out format))
                 throw new SevenZipException(Path.GetFileName(archiveFilePath) + " is not a known archive type");
-            }
 
-            this.archive = this.sevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format]);
+            this.archive = SevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format.Value]);
             this.archiveStream = new InStreamWrapper(File.OpenRead(archiveFilePath));
         }
 
         public ArchiveFile(Stream archiveStream, SevenZipFormat? format = null, string libraryFilePath = null)
         {
-            this.libraryFilePath = libraryFilePath;
-
-            this.InitializeAndValidateLibrary();
-
             if (archiveStream == null)
             {
                 throw new SevenZipException("archiveStream is null");
@@ -88,19 +60,11 @@ namespace SevenZipExtractor
 
             if (format == null)
             {
-                SevenZipFormat guessedFormat;
-
-                if (this.GuessFormatFromSignature(archiveStream, out guessedFormat))
-                {
-                    format = guessedFormat;
-                }
-                else
-                {
+                if (!this.GuessFormatFromSignature(archiveStream, out format))
                     throw new SevenZipException("Unable to guess format automatically");
-                }
             }
 
-            this.archive = this.sevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format.Value]);
+            this.archive = SevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format.Value]);
             this.archiveStream = new InStreamWrapper(archiveStream);
             this.TotalCount = Entries.Sum(x => x.IsFolder ? 0 : 1);
         }
@@ -127,8 +91,8 @@ namespace SevenZipExtractor
 
         public void Extract(Func<Entry, string> getOutputPath, CancellationToken Token = new CancellationToken())
         {
-            IList<CancellableFileStream> fileStreams = new List<CancellableFileStream>();
-            ArchiveStreamsCallback streamCallback;
+            List<FileStream> fileStreams = new List<FileStream>();
+            ArchiveStreamsCallback streamCallback = null;
 
             try
             {
@@ -156,27 +120,23 @@ namespace SevenZipExtractor
                         Directory.CreateDirectory(directoryName);
                     }
 
-                    fileStreams.Add(new CancellableFileStream(File.Create(outputPath), Token));
+                    fileStreams.Add(File.Create(outputPath));
                 }
 
-                streamCallback = new ArchiveStreamsCallback(fileStreams);
                 ExtractProgressStopwatch = Stopwatch.StartNew();
+                streamCallback = new ArchiveStreamsCallback(fileStreams, Token);
                 streamCallback.ReadProgress += StreamCallback_ReadProperty;
 
                 this.archive.Extract(null, 0xFFFFFFFF, 0, streamCallback);
                 Token.ThrowIfCancellationRequested();
-                streamCallback.ReadProgress -= StreamCallback_ReadProperty;
             }
             catch (Exception) { throw; }
             finally
             {
-                foreach (CancellableFileStream stream in fileStreams)
-                {
-                    if (stream != null)
-                    {
-                        stream.Dispose();
-                    }
-                }
+                ExtractProgressStopwatch.Stop();
+                fileStreams.ForEach(x => x?.Dispose());
+                fileStreams.Clear();
+                streamCallback.ReadProgress -= StreamCallback_ReadProperty;
             }
         }
 
@@ -199,7 +159,7 @@ namespace SevenZipExtractor
                 e.StartRead, e.EndRead, ExtractProgressStopwatch.Elapsed.TotalSeconds, e.Count, TotalCount));
         }
 
-        public IList<Entry> Entries
+        public List<Entry> Entries
         {
             get
             {
@@ -209,7 +169,7 @@ namespace SevenZipExtractor
                 }
 
                 ulong checkPos = 32 * 1024;
-                int open = this.archive.Open(this.archiveStream, ref checkPos, null);
+                int open = this.archive.Open(this.archiveStream, checkPos, null);
 
                 if (open != 0)
                 {
@@ -271,7 +231,7 @@ namespace SevenZipExtractor
             }
             catch (InvalidCastException)
             {
-                return default(T);
+                return default;
             }
         }
 
@@ -292,14 +252,13 @@ namespace SevenZipExtractor
             if (propVariant.VarType == VarEnum.VT_EMPTY)
             {
                 propVariant.Clear();
-                return default(T);
+                return default;
             }
 
             propVariant.Clear();
-
             if (value == null)
             {
-                return default(T);
+                return default;
             }
 
             Type type = typeof(T);
@@ -312,55 +271,7 @@ namespace SevenZipExtractor
             return result;
         }
 
-        private void InitializeAndValidateLibrary()
-        {
-            if (string.IsNullOrWhiteSpace(this.libraryFilePath))
-            {
-                string currentArchitecture = IntPtr.Size == 4 ? "x86" : "x64"; // magic check
-
-                if (File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "7z-" + currentArchitecture + ".dll")))
-                {
-                    this.libraryFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "7z-" + currentArchitecture + ".dll");
-                }
-                else if (File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin", "7z-" + currentArchitecture + ".dll")))
-                {
-                    this.libraryFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin", "7z-" + currentArchitecture + ".dll");
-                }
-                else if (File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin", currentArchitecture, "7z.dll")))
-                {
-                    this.libraryFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin", currentArchitecture, "7z.dll");
-                }
-                else if (File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, currentArchitecture, "7z.dll")))
-                {
-                    this.libraryFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, currentArchitecture, "7z.dll");
-                }
-                else if (File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "7-Zip", "7z.dll")))
-                {
-                    this.libraryFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "7-Zip", "7z.dll");
-                }
-            }
-
-            if (string.IsNullOrWhiteSpace(this.libraryFilePath))
-            {
-                throw new SevenZipException("libraryFilePath not set");
-            }
-
-            if (!File.Exists(this.libraryFilePath))
-            {
-                throw new SevenZipException("7z.dll not found");
-            }
-
-            try
-            {
-                this.sevenZipHandle = new SevenZipHandle(this.libraryFilePath);
-            }
-            catch (Exception e)
-            {
-                throw new SevenZipException("Unable to initialize SevenZipHandle", e);
-            }
-        }
-
-        private bool GuessFormatFromExtension(string fileExtension, out SevenZipFormat format)
+        private bool GuessFormatFromExtension(string fileExtension, out SevenZipFormat? format)
         {
             if (string.IsNullOrWhiteSpace(fileExtension))
             {
@@ -393,7 +304,7 @@ namespace SevenZipExtractor
         }
 
 
-        private bool GuessFormatFromSignature(string filePath, out SevenZipFormat format)
+        private bool GuessFormatFromSignature(string filePath, out SevenZipFormat? format)
         {
             using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
@@ -401,27 +312,74 @@ namespace SevenZipExtractor
             }
         }
 
-        private bool GuessFormatFromSignature(Stream stream, out SevenZipFormat format)
+        private int SearchMaxSignatureLength()
         {
-            int longestSignature = Formats.FileSignatures.Values.OrderByDescending(v => v.Length).First().Length;
+            int maxLen = 0;
+            foreach (FormatProperties format in Formats.FileSignatures.Values)
+            {
+                int len = GetSignatureLength(format);
+                if (len > maxLen) maxLen = len;
+            }
 
-            byte[] archiveFileSignature = new byte[longestSignature];
-            int bytesRead = stream.Read(archiveFileSignature, 0, longestSignature);
+            return maxLen;
+        }
 
-            stream.Position -= bytesRead; // go back o beginning
+        private int GetSignatureLength(FormatProperties format)
+        {
+            int len = 0;
+            if (format.SignatureOffsets != null)
+                len += format.SignatureOffsets.Max();
 
-            if (bytesRead != longestSignature)
+            len += format.SignatureData.Length;
+            return len;
+        }
+
+        private bool GuessFormatFromSignature(Stream stream, out SevenZipFormat? format)
+        {
+            int maxLenSignature = SearchMaxSignatureLength();
+
+            if (!stream.CanSeek)
+                throw new SevenZipException("Stream must be seekable to detect the format properly!");
+
+            if (maxLenSignature > stream.Length)
+                maxLenSignature = (int)stream.Length;
+
+            Span<byte> archiveFileSignature = new byte[maxLenSignature];
+            int bytesRead = stream.ReadAtLeast(archiveFileSignature, maxLenSignature, false);
+
+            stream.Position -= bytesRead;
+
+            if (bytesRead != maxLenSignature)
             {
                 format = SevenZipFormat.Undefined;
                 return false;
             }
 
-            foreach (KeyValuePair<SevenZipFormat, byte[]> pair in Formats.FileSignatures)
+            foreach (KeyValuePair<SevenZipFormat, FormatProperties> pair in Formats.FileSignatures)
             {
-                if (archiveFileSignature.Take(pair.Value.Length).SequenceEqual(pair.Value))
+                int offset = 0;
+                int i = 0;
+                if (pair.Value.SignatureOffsets == null)
                 {
-                    format = pair.Key;
-                    return true;
+                    if (archiveFileSignature.Slice(0, pair.Value.SignatureData.Length).SequenceEqual(pair.Value.SignatureData))
+                    {
+                        format = pair.Key;
+                        return true;
+                    }
+
+                    continue;
+                }
+
+                while (i < pair.Value.SignatureOffsets.Length)
+                {
+                    offset = pair.Value.SignatureOffsets[i];
+                    if (archiveFileSignature.Slice(offset, pair.Value.SignatureData.Length).SequenceEqual(pair.Value.SignatureData))
+                    {
+                        format = pair.Key;
+                        return true;
+                    }
+
+                    i++;
                 }
             }
 
@@ -429,26 +387,15 @@ namespace SevenZipExtractor
             return false;
         }
 
-        ~ArchiveFile()
-        {
-            this.Dispose(false);
-        }
+        ~ArchiveFile() => this.Dispose();
 
-        protected void Dispose(bool disposing)
+        public void Dispose()
         {
             this.archiveStream?.Dispose();
 
             if (this.archive != null)
-            {
-                Marshal.ReleaseComObject(this.archive);
-            }
+                this.archive.Close();
 
-            this.sevenZipHandle?.Dispose();
-        }
-
-        public void Dispose()
-        {
-            this.Dispose(true);
             GC.SuppressFinalize(this);
         }
     }

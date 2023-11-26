@@ -1,23 +1,28 @@
 ﻿using System.IO;
+using System.Runtime.InteropServices.Marshalling;
+using System.Threading;
 
 namespace SevenZipExtractor
 {
-    internal class ArchiveStreamCallback : IArchiveExtractCallback
+    [GeneratedComClass]
+    internal sealed partial class ArchiveStreamCallback : IArchiveExtractCallback
     {
+        private readonly CancellationToken cancellationToken;
         private readonly uint fileNumber;
         private readonly Stream stream;
 
-        public ArchiveStreamCallback(uint fileNumber, Stream stream)
+        public ArchiveStreamCallback(uint fileNumber, Stream stream, CancellationToken cancellationToken)
         {
             this.fileNumber = fileNumber;
             this.stream = stream;
+            this.cancellationToken = cancellationToken;
         }
 
         public void SetTotal(ulong total)
         {
         }
 
-        public void SetCompleted(ref ulong completeValue)
+        public void SetCompleted(in ulong completeValue)
         {
         }
 
@@ -29,8 +34,7 @@ namespace SevenZipExtractor
                 return 0;
             }
 
-            outStream = new OutStreamWrapper(this.stream);
-
+            outStream = new OutStreamWrapper(this.stream, this.cancellationToken);
             return 0;
         }
 

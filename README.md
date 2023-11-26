@@ -1,7 +1,13 @@
 # SevenZipExtractor
-C# wrapper for 7z.dll (x86 and x64 included) 
-- .NET Standard 2.0
-- .NET Framework 4.5
+C# wrapper for 7z.dll (x86 and x64 included). Due to a compatibility issue with "Source Generated" COM Interop, this fork only works with .NET 8.<br/>
+This fork has been modified to work with [**NativeAOT**](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/?tabs=net8plus%2Cwindows) and [**ILTrimming**](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/trimming-options?pivots=dotnet-8-0) on .NET 8. This fork also adds other features such as:
+- Cancellable extraction
+- Progress event
+- Latest 7z.dll library (Currently: v23.01)
+
+However, all the credits for the initial works have been done by the original creator: [**Alexander Selishchev**](https://github.com/adoconnection)
+
+This fork is unfortunately still unavailable on NuGet but if you prefer one, please refer to the original version here:
 
 [![NuGet](https://img.shields.io/nuget/dt/SevenZipExtractor.svg?style=flat-square)](https://www.nuget.org/packages/SevenZipExtractor)
 [![NuGet](https://img.shields.io/nuget/v/SevenZipExtractor.svg?style=flat-square)](https://www.nuget.org/packages/SevenZipExtractor)
@@ -67,9 +73,10 @@ Install-Package SevenZipExtractor
 
 #### Extract all
 ```cs
+CancellationTokenSource tokenSource = new CancellationTokenSource();
 using (ArchiveFile archiveFile = new ArchiveFile(@"Archive.ARJ"))
 {
-    archiveFile.Extract("Output"); // extract all
+    archiveFile.Extract("Output", tokenSource.Token); // extract all with cancellable control using token
 }
 
 ```
