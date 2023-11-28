@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 
 namespace SevenZipExtractor
@@ -11,7 +12,7 @@ namespace SevenZipExtractor
 
     public static class Formats
     {
-        internal static readonly Dictionary<string, SevenZipFormat> ExtensionFormatMapping = new Dictionary<string, SevenZipFormat>
+        internal static readonly FrozenDictionary<string, SevenZipFormat> ExtensionFormatMapping = new Dictionary<string, SevenZipFormat>
         {
             {"7z", SevenZipFormat.SevenZip},
             {"gz", SevenZipFormat.GZip},
@@ -40,9 +41,9 @@ namespace SevenZipExtractor
             {"exe", SevenZipFormat.PE},
             {"dll", SevenZipFormat.PE},
             {"vhd", SevenZipFormat.Vhd}
-        };
+        }.ToFrozenDictionary();
 
-        internal static Dictionary<SevenZipFormat, Guid> FormatGuidMapping = new Dictionary<SevenZipFormat, Guid>
+        internal static FrozenDictionary<SevenZipFormat, Guid> FormatGuidMapping = new Dictionary<SevenZipFormat, Guid>
         {
             {SevenZipFormat.SevenZip, new Guid("23170f69-40c1-278a-1000-000110070000")},
             {SevenZipFormat.Arj, new Guid("23170f69-40c1-278a-1000-000110040000")},
@@ -90,9 +91,9 @@ namespace SevenZipExtractor
             {SevenZipFormat.Fat, new Guid("23170f69-40c1-278a-1000-000110DA0000")},
             {SevenZipFormat.Mbr, new Guid("23170f69-40c1-278a-1000-000110DB0000")},
             {SevenZipFormat.MachO, new Guid("23170f69-40c1-278a-1000-000110DF0000")}
-        };
+        }.ToFrozenDictionary();
 
-        internal static Dictionary<SevenZipFormat, FormatProperties> FileSignatures = new Dictionary<SevenZipFormat, FormatProperties>
+        internal static FrozenDictionary<SevenZipFormat, FormatProperties> FileSignatures = new Dictionary<SevenZipFormat, FormatProperties>
         {
             {SevenZipFormat.Rar5, new FormatProperties { SignatureData = new byte[] {0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x01, 0x00} }},
             {SevenZipFormat.Rar, new FormatProperties { SignatureData = new byte[] { 0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x00 } }},
@@ -109,12 +110,12 @@ namespace SevenZipExtractor
             {SevenZipFormat.BZip2, new FormatProperties { SignatureData = new byte[] { 0x42, 0x5A, 0x68 } }},
             {SevenZipFormat.Flv, new FormatProperties { SignatureData = new byte[] { 0x46, 0x4C, 0x56 } }},
             {SevenZipFormat.Swf, new FormatProperties { SignatureData = new byte[] { 0x46, 0x57, 0x53 } }},
-            {SevenZipFormat.GZip, new FormatProperties { SignatureData = new byte[] { 0x1f, 0x0b } }},
+            {SevenZipFormat.GZip, new FormatProperties { SignatureData = new byte[] { 0x1f, 0x8b } }},
             {SevenZipFormat.Zip, new FormatProperties { SignatureData = new byte[] { 0x50, 0x4b } }},
             {SevenZipFormat.Arj, new FormatProperties { SignatureData = new byte[] { 0x60, 0xEA } }},
             {SevenZipFormat.Lzh, new FormatProperties { SignatureOffsets = new int[] { 0x2 }, SignatureData = new byte[] { 0x2D, 0x6C, 0x68 } }},
             {SevenZipFormat.SquashFS, new FormatProperties { SignatureData = new byte[] { 0x68, 0x73, 0x71, 0x73 } }},
             {SevenZipFormat.Mslz, new FormatProperties { SignatureData = new byte[] { 0x53, 0x5a, 0x44, 0x44 } }}
-        };
+        }.ToFrozenDictionary();
     }
 }

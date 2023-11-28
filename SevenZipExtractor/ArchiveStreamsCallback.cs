@@ -24,32 +24,41 @@ namespace SevenZipExtractor
         private readonly List<FileStream> streams;
         private readonly CancellationToken cancellationToken;
 
+        private FileProgressProperty ProgressProperty;
+        private FileStatusProperty StatusProperty;
+
         public event EventHandler<FileProgressProperty> ReadProgress;
         public event EventHandler<FileStatusProperty> ReadStatus;
+
         private void UpdateProgress(FileProgressProperty e) => ReadProgress?.Invoke(this, e);
         private void UpdateStatus(FileStatusProperty e) => ReadStatus?.Invoke(this, e);
-
-        private ulong TotalSize = 0;
-        private ulong TotalRead = 0;
-        private string CurrentName = "";
-        private int Count = 0;
 
         public ArchiveStreamsCallback(List<FileStream> streams, CancellationToken cancellationToken)
         {
             this.streams = streams;
             this.cancellationToken = cancellationToken;
+            this.ProgressProperty = new FileProgressProperty
+            {
+                Count = 0,
+                StartRead = 0,
+                EndRead = 0
+            };
+            this.StatusProperty = new FileStatusProperty
+            {
+                Name = string.Empty
+            };
         }
 
         public void SetTotal(ulong total)
         {
-            TotalSize = total;
-            UpdateProgress(new FileProgressProperty { StartRead = TotalRead, EndRead = TotalSize, Count = Count });
+            this.ProgressProperty.EndRead = total;
+            UpdateProgress(this.ProgressProperty);
         }
 
         public void SetCompleted(in ulong completeValue)
         {
-            TotalRead = completeValue;
-            UpdateProgress(new FileProgressProperty { StartRead = TotalRead, EndRead = TotalSize, Count = Count });
+            this.ProgressProperty.StartRead = completeValue;
+            UpdateProgress(this.ProgressProperty);
         }
 
         public int GetStream(uint index, out ISequentialOutStream outStream, AskMode askExtractMode)
@@ -75,9 +84,9 @@ namespace SevenZipExtractor
             }
             else
             {
-                CurrentName = stream.Name;
-                Count++;
-                UpdateStatus(new FileStatusProperty { Name = CurrentName });
+                this.ProgressProperty.Count = 0;
+                this.StatusProperty.Name = stream.Name;
+                UpdateStatus(this.StatusProperty);
             }
 
             outStream = new OutStreamWrapper(stream, this.cancellationToken);
