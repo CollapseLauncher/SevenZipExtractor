@@ -357,29 +357,15 @@ namespace SevenZipExtractor
 
             foreach (KeyValuePair<SevenZipFormat, FormatProperties> pair in Formats.FileSignatures)
             {
-                int offset = 0;
-                int i = 0;
-                if (pair.Value.SignatureOffsets == null)
+                int[] offsets = pair.Value.SignatureOffsets ?? [0];
+                foreach (int offset in offsets)
                 {
-                    if (archiveFileSignature.Slice(0, pair.Value.SignatureData.Length).SequenceEqual(pair.Value.SignatureData))
-                    {
-                        format = pair.Key;
-                        return true;
-                    }
-
-                    continue;
-                }
-
-                while (i < pair.Value.SignatureOffsets.Length)
-                {
-                    offset = pair.Value.SignatureOffsets[i];
+                    if (maxLenSignature < offset + pair.Value.SignatureData.Length) continue;
                     if (archiveFileSignature.Slice(offset, pair.Value.SignatureData.Length).SequenceEqual(pair.Value.SignatureData))
                     {
                         format = pair.Key;
                         return true;
                     }
-
-                    i++;
                 }
             }
 
