@@ -187,17 +187,17 @@ namespace SevenZipExtractor
                     bool isEncrypted = this.GetProperty<bool>(fileIndex, ItemPropId.kpidEncrypted);
                     ulong size = this.GetProperty<ulong>(fileIndex, ItemPropId.kpidSize);
                     ulong packedSize = this.GetProperty<ulong>(fileIndex, ItemPropId.kpidPackedSize);
-                    DateTime creationTime = GetDateTime(fileIndex, ItemPropId.kpidCreationTime);
-                    DateTime lastWriteTime = GetDateTime(fileIndex, ItemPropId.kpidLastWriteTime);
-                    DateTime lastAccessTime = GetDateTime(fileIndex, ItemPropId.kpidLastAccessTime);
-                    uint crc = this.GetPropertySafe<uint>(fileIndex, ItemPropId.kpidCRC);
-                    uint attributes = this.GetPropertySafe<uint>(fileIndex, ItemPropId.kpidAttributes);
-                    string comment = this.GetPropertySafe<string>(fileIndex, ItemPropId.kpidComment);
-                    string hostOS = this.GetPropertySafe<string>(fileIndex, ItemPropId.kpidHostOS);
-                    string method = this.GetPropertySafe<string>(fileIndex, ItemPropId.kpidMethod);
+                    DateTime creationTime = this.GetProperty<DateTime>(fileIndex, ItemPropId.kpidCreationTime);
+                    DateTime lastWriteTime = this.GetProperty<DateTime>(fileIndex, ItemPropId.kpidLastWriteTime);
+                    DateTime lastAccessTime = this.GetProperty<DateTime>(fileIndex, ItemPropId.kpidLastAccessTime);
+                    uint crc = this.GetProperty<uint>(fileIndex, ItemPropId.kpidCRC);
+                    uint attributes = this.GetProperty<uint>(fileIndex, ItemPropId.kpidAttributes);
+                    string comment = this.GetProperty<string>(fileIndex, ItemPropId.kpidComment);
+                    string hostOS = this.GetProperty<string>(fileIndex, ItemPropId.kpidHostOS);
+                    string method = this.GetProperty<string>(fileIndex, ItemPropId.kpidMethod);
 
-                    bool isSplitBefore = this.GetPropertySafe<bool>(fileIndex, ItemPropId.kpidSplitBefore);
-                    bool isSplitAfter = this.GetPropertySafe<bool>(fileIndex, ItemPropId.kpidSplitAfter);
+                    bool isSplitBefore = this.GetProperty<bool>(fileIndex, ItemPropId.kpidSplitBefore);
+                    bool isSplitAfter = this.GetProperty<bool>(fileIndex, ItemPropId.kpidSplitAfter);
 
                     this.entries.Add(new Entry(this.archive, fileIndex)
                     {
@@ -223,43 +223,16 @@ namespace SevenZipExtractor
             }
         }
 
-        private T GetPropertySafe<T>(uint fileIndex, ItemPropId name)
-        {
-            try
-            {
-                return this.GetProperty<T>(fileIndex, name);
-            }
-            catch (InvalidCastException)
-            {
-                return default;
-            }
-        }
-
-        private DateTime GetDateTime(uint fileIndex, ItemPropId name)
+#nullable enable
+        private T? GetProperty<T>(uint fileIndex, ItemPropId name)
         {
             PropVariant propVariant = new PropVariant();
             this.archive.GetProperty(fileIndex, name, ref propVariant);
-
-            return DateTime.FromFileTime(propVariant.longValue);
+            T? obj = propVariant.GetObjectAndClear<T>();
+            if (obj == null) return default;
+            return obj;
         }
-
-        private T GetProperty<T>(uint fileIndex, ItemPropId name)
-        {
-            PropVariant propVariant = new PropVariant();
-            this.archive.GetProperty(fileIndex, name, ref propVariant);
-            object value = propVariant.GetObjectAndClear();
-
-            if (propVariant.VarType == VarEnum.VT_EMPTY || value == null) return default;
-
-            Type type = typeof(T);
-            bool isNullable = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
-            Type underlyingType = isNullable ? Nullable.GetUnderlyingType(type) : type;
-
-            string valueString = value.ToString();
-            T result = (T)Convert.ChangeType(valueString, underlyingType);
-
-            return result;
-        }
+#nullable disable
 
         private bool GuessFormatFromExtension(string fileExtension, out SevenZipFormat? format)
         {

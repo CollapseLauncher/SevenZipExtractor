@@ -51,19 +51,6 @@ namespace SevenZipExtractor
         kpidUserDefined = 0x10000
     }
 
-    internal enum ArchivePropId : uint
-    {
-        kName = 0,
-        kClassID,
-        kExtension,
-        kAddExtension,
-        kUpdate,
-        kKeepName,
-        kStartSignature,
-        kFinishSignature,
-        kAssociate
-    }
-
     internal enum AskMode : int
     {
         kExtract = 0,
@@ -79,27 +66,11 @@ namespace SevenZipExtractor
         kCRCError
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Size = 8)]
     internal struct PropArray
     {
-        uint length;
-        IntPtr pointerValues;
-    }
-
-    //
-    // Summary:
-    //     Represents the number of 100-nanosecond intervals since January 1, 1601. This
-    //     structure is a 64-bit value.
-    internal struct FILETIME
-    {
-        //
-        // Summary:
-        //     Specifies the high 32 bits of the FILETIME.
-        public int dwHighDateTime;
-        //
-        // Summary:
-        //     Specifies the low 32 bits of the FILETIME.
-        public int dwLowDateTime;
+        internal uint length;
+        internal IntPtr pointerValues;
     }
 
     [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 16)]
@@ -121,7 +92,6 @@ namespace SevenZipExtractor
         [FieldOffset(8)] internal long longValue;
         [FieldOffset(8)] internal float floatValue;
         [FieldOffset(8)] internal double doubleValue;
-        [FieldOffset(8)] internal FILETIME fileTime;
         [FieldOffset(8)] internal PropArray propArray;
 
         public VarEnum VarType => (VarEnum)this.vt;
@@ -140,23 +110,31 @@ namespace SevenZipExtractor
             return returnVal;
         }
 
-        private unsafe string PtrToStringUnicode(nint ptr)
+        internal unsafe string PtrToStringUnicode(nint ptr)
         {
             string returnVal = new string((char*)ptr);
             Marshal.FreeBSTR(ptr);
             return returnVal;
         }
 
-        public object GetObjectAndClear()
+#nullable enable
+        internal T? GetObjectAndClear<T>()
+        {
+            object? obj = GetObjectAndClear();
+            if (obj == null) return default;
+            return (T?)obj;
+        }
+
+        internal object? GetObjectAndClear()
         {
             GCHandle gcHandle = GCHandle.Alloc(this, GCHandleType.Pinned);
             try
             {
-                object returnObject = this.VarType switch
+                object? returnObject = this.VarType switch
                 {
                     VarEnum.VT_EMPTY => null,
-                    VarEnum.VT_FILETIME => DateTime.FromFileTime(this.longValue),
-                    VarEnum.VT_DATE => DateTime.FromFileTime(this.longValue),
+                    VarEnum.VT_FILETIME => this.longValue == 0 ? default : DateTime.FromFileTime(this.longValue),
+                    VarEnum.VT_DATE => this.longValue == 0 ? default : DateTime.FromFileTime(this.longValue),
                     VarEnum.VT_BSTR => PtrToStringBSTR(this.pointer),
                     VarEnum.VT_LPSTR => PtrToStringUTF8(this.pointer),
                     VarEnum.VT_LPWSTR => PtrToStringUnicode(this.pointer),
@@ -172,6 +150,7 @@ namespace SevenZipExtractor
                     VarEnum.VT_R4 => floatValue,
                     VarEnum.VT_R8 => doubleValue,
                     VarEnum.VT_INT => intValue,
+                    VarEnum.VT_ARRAY => propArray,
                     _ => Marshal.GetObjectForNativeVariant<object>(this.pointer)
                 };
 
@@ -184,6 +163,7 @@ namespace SevenZipExtractor
             catch { throw; }
             finally { gcHandle.Free(); }
         }
+#nullable disable
     }
 
     [Guid("23170F69-40C1-278A-0000-000600100000")]
