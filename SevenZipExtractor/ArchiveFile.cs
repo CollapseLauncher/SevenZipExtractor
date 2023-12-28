@@ -247,19 +247,9 @@ namespace SevenZipExtractor
         {
             PropVariant propVariant = new PropVariant();
             this.archive.GetProperty(fileIndex, name, ref propVariant);
-            object value = propVariant.GetObject();
+            object value = propVariant.GetObjectAndClear();
 
-            if (propVariant.VarType == VarEnum.VT_EMPTY)
-            {
-                propVariant.Clear();
-                return default;
-            }
-
-            propVariant.Clear();
-            if (value == null)
-            {
-                return default;
-            }
+            if (propVariant.VarType == VarEnum.VT_EMPTY || value == null) return default;
 
             Type type = typeof(T);
             bool isNullable = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);

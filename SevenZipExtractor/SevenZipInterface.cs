@@ -102,104 +102,88 @@ namespace SevenZipExtractor
         public int dwLowDateTime;
     }
 
-    [StructLayout(LayoutKind.Explicit)]
+    [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 16)]
     internal partial struct PropVariant
     {
         // Local P/Invoke
-        [DllImport("ole32.dll", EntryPoint = "PropVariantClear", ExactSpelling = true)]
-        private static extern unsafe int PropVariantClearInvoke(PropVariant* pvar_native);
+        [DllImport("ole32.dll", EntryPoint = "PropVariantClear", ExactSpelling = true, SetLastError = true)]
+        private static extern unsafe int PropVariantClearInvoke(nint ptr);
 
-        private static unsafe int PropVariantClear(ref PropVariant pvar)
-        {
-            fixed (PropVariant* pvar_native = &pvar)
-            {
-                int retVal = PropVariantClearInvoke(pvar_native);
-                return retVal;
-            }
-        }
-
-        [FieldOffset(0)] public ushort vt;
-        [FieldOffset(8)] public IntPtr pointerValue;
-        [FieldOffset(8)] public byte byteValue;
-        [FieldOffset(8)] public long longValue;
-        [FieldOffset(8)] public FILETIME fileTime;
-        [FieldOffset(8)] public PropArray propArray;
+        [FieldOffset(0)] internal ushort vt;
+        [FieldOffset(8)] internal IntPtr pointer;
+        [FieldOffset(8)] internal byte byteValue;
+        [FieldOffset(8)] internal sbyte sbyteValue;
+        [FieldOffset(8)] internal ushort ushortValue;
+        [FieldOffset(8)] internal short shortValue;
+        [FieldOffset(8)] internal uint uintValue;
+        [FieldOffset(8)] internal int intValue;
+        [FieldOffset(8)] internal ulong ulongValue;
+        [FieldOffset(8)] internal long longValue;
+        [FieldOffset(8)] internal float floatValue;
+        [FieldOffset(8)] internal double doubleValue;
+        [FieldOffset(8)] internal FILETIME fileTime;
+        [FieldOffset(8)] internal PropArray propArray;
 
         public VarEnum VarType => (VarEnum)this.vt;
 
-        public void Clear()
-        {
-            switch (this.VarType)
-            {
-                case VarEnum.VT_EMPTY:
-                    break;
-
-                case VarEnum.VT_NULL:
-                case VarEnum.VT_I2:
-                case VarEnum.VT_I4:
-                case VarEnum.VT_R4:
-                case VarEnum.VT_R8:
-                case VarEnum.VT_CY:
-                case VarEnum.VT_DATE:
-                case VarEnum.VT_ERROR:
-                case VarEnum.VT_BOOL:
-                //case VarEnum.VT_DECIMAL:
-                case VarEnum.VT_I1:
-                case VarEnum.VT_UI1:
-                case VarEnum.VT_UI2:
-                case VarEnum.VT_UI4:
-                case VarEnum.VT_I8:
-                case VarEnum.VT_UI8:
-                case VarEnum.VT_INT:
-                case VarEnum.VT_UINT:
-                case VarEnum.VT_HRESULT:
-                case VarEnum.VT_FILETIME:
-                    this.vt = 0;
-                    break;
-
-                default:
-                    PropVariantClear(ref this);
-                    break;
-            }
-        }
-
-        private string BSTRPtrToString(nint ptr)
+        private unsafe string PtrToStringBSTR(nint ptr)
         {
             string returnVal = Marshal.PtrToStringBSTR(ptr);
             Marshal.FreeBSTR(ptr);
             return returnVal;
         }
 
-        private object UnknownVarEnumToObj(PropVariant strct)
+        private unsafe string PtrToStringUTF8(nint ptr)
         {
-            GCHandle PropHandle = GCHandle.Alloc(strct, GCHandleType.Pinned);
-            try
-            {
-                nint variant = PropHandle.AddrOfPinnedObject();
-                return Marshal.GetObjectForNativeVariant<object>(variant);
-            }
-            finally
-            {
-                PropHandle.Free();
-            }
+            string returnVal = new string((sbyte*)ptr);
+            Marshal.FreeBSTR(ptr);
+            return returnVal;
         }
 
-        public object GetObject() => this.VarType switch
+        private unsafe string PtrToStringUnicode(nint ptr)
         {
-            VarEnum.VT_EMPTY => null,
-            VarEnum.VT_FILETIME => DateTime.FromFileTime(this.longValue),
-            VarEnum.VT_BSTR => BSTRPtrToString(this.pointerValue),
-            VarEnum.VT_BOOL => byteValue == 0xFF,
-            VarEnum.VT_UI8 => (ulong)longValue,
-            VarEnum.VT_UI4 => (uint)longValue,
-            VarEnum.VT_UI2 => (ushort)longValue,
-            VarEnum.VT_UI1 => byteValue,
-            VarEnum.VT_I8 => longValue,
-            VarEnum.VT_I4 => (int)longValue,
-            VarEnum.VT_I2 => (short)longValue,
-            VarEnum.VT_I1 => (sbyte)byteValue,
-            _ => UnknownVarEnumToObj(this)
-        };
+            string returnVal = new string((char*)ptr);
+            Marshal.FreeBSTR(ptr);
+            return returnVal;
+        }
+
+        public object GetObjectAndClear()
+        {
+            GCHandle gcHandle = GCHandle.Alloc(this, GCHandleType.Pinned);
+            try
+            {
+                object returnObject = this.VarType switch
+                {
+                    VarEnum.VT_EMPTY => null,
+                    VarEnum.VT_FILETIME => DateTime.FromFileTime(this.longValue),
+                    VarEnum.VT_DATE => DateTime.FromFileTime(this.longValue),
+                    VarEnum.VT_BSTR => PtrToStringBSTR(this.pointer),
+                    VarEnum.VT_LPSTR => PtrToStringUTF8(this.pointer),
+                    VarEnum.VT_LPWSTR => PtrToStringUnicode(this.pointer),
+                    VarEnum.VT_BOOL => byteValue == 0xFF,
+                    VarEnum.VT_UI8 => ulongValue,
+                    VarEnum.VT_UI4 => uintValue,
+                    VarEnum.VT_UI2 => ushortValue,
+                    VarEnum.VT_UI1 => byteValue,
+                    VarEnum.VT_I8 => longValue,
+                    VarEnum.VT_I4 => intValue,
+                    VarEnum.VT_I2 => shortValue,
+                    VarEnum.VT_I1 => sbyteValue,
+                    VarEnum.VT_R4 => floatValue,
+                    VarEnum.VT_R8 => doubleValue,
+                    VarEnum.VT_INT => intValue,
+                    _ => Marshal.GetObjectForNativeVariant<object>(this.pointer)
+                };
+
+                int retVal = PropVariantClearInvoke(gcHandle.AddrOfPinnedObject());
+                if (retVal != 0)
+                    throw new InvalidOperationException($"Error has occurred while clearing the PropVariant structure with message: {Marshal.GetLastPInvokeErrorMessage()}");
+
+                return returnObject;
+            }
+            catch { throw; }
+            finally { gcHandle.Free(); }
+        }
     }
 
     [Guid("23170F69-40C1-278A-0000-000600100000")]
