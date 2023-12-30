@@ -73,7 +73,9 @@ namespace SevenZipExtractor
         internal IntPtr pointerValues;
     }
 
-    [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 16)]
+    // Size was previously 16 bytes but due to x64 build, it should've been 24 bytes
+    // This also means that we can use decimal value since it's a 16 bytes-long floating number.
+    [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 24)]
     internal partial struct PropVariant
     {
         // Local P/Invoke
@@ -149,6 +151,7 @@ namespace SevenZipExtractor
                     VarEnum.VT_I1 => sbyteValue,
                     VarEnum.VT_R4 => floatValue,
                     VarEnum.VT_R8 => doubleValue,
+                    VarEnum.VT_DECIMAL => GetDecimalNumber(gcHandle.AddrOfPinnedObject()),
                     VarEnum.VT_INT => intValue,
                     VarEnum.VT_ARRAY => propArray,
                     _ => Marshal.GetObjectForNativeVariant<object>(this.pointer)
@@ -162,6 +165,13 @@ namespace SevenZipExtractor
             }
             catch { throw; }
             finally { gcHandle.Free(); }
+        }
+
+        private unsafe decimal GetDecimalNumber(nint ptr)
+        {
+            void* unsafePtr = (void*)(ptr + 8); // Get the raw pointer of the 8 bytes forward of this struct
+            ReadOnlySpan<int> span = new ReadOnlySpan<int>(unsafePtr, 4); // Cast the pointer as a ReadOnlySpan<int>
+            return new decimal(span); // Return a new decimal from the ReadOnlySpan<int>
         }
 #nullable disable
     }
