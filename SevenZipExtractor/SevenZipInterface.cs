@@ -78,10 +78,6 @@ namespace SevenZipExtractor
     [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 24)]
     internal partial struct PropVariant
     {
-        // Local P/Invoke
-        [DllImport("ole32.dll", EntryPoint = "PropVariantClear", ExactSpelling = true, SetLastError = true)]
-        private static extern unsafe int PropVariantClearInvoke(nint ptr);
-
         [FieldOffset(0)] internal ushort vt;
         [FieldOffset(8)] internal IntPtr pointer;
         [FieldOffset(8)] internal byte byteValue;
@@ -157,7 +153,7 @@ namespace SevenZipExtractor
                     _ => Marshal.GetObjectForNativeVariant<object>(this.pointer)
                 };
 
-                int retVal = PropVariantClearInvoke(gcHandle.AddrOfPinnedObject());
+                int retVal = NativeMethods.PropVariantClearInvoke(gcHandle.AddrOfPinnedObject());
                 if (retVal != 0)
                     throw new InvalidOperationException($"Error has occurred while clearing the PropVariant structure with message: {Marshal.GetLastPInvokeErrorMessage()}");
 
