@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -11,6 +12,7 @@ namespace SevenZipExtractor
     {
         private const string SEVENZIPDLL_NAME = "7z.dll";
         private const string SEVENZIPDLL_PATH = "Lib\\" + SEVENZIPDLL_NAME;
+        private static string CURRENTPROC_PATH = Process.GetCurrentProcess().MainModule!.FileName;
 
         static NativeMethods()
         {
@@ -36,7 +38,7 @@ namespace SevenZipExtractor
             if (libraryName.EndsWith(SEVENZIPDLL_NAME, StringComparison.InvariantCultureIgnoreCase))
             {
                 // Get the root directory of the module, then try get the stock .dll path
-                string assemblyParentPath = Path.GetDirectoryName(assembly.Location);
+                string assemblyParentPath = Path.GetDirectoryName(CURRENTPROC_PATH);
                 string sevenZipStockPath = Path.Combine(assemblyParentPath, SEVENZIPDLL_PATH);
 
                 // If the stock .dll is not found in <collapse_install_path>\Lib\7z.dll,
