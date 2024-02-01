@@ -30,27 +30,32 @@ namespace SevenZipExtractor
 
     public sealed class ArchiveFile : IDisposable
     {
-        private readonly IInArchive archive;
-        private readonly InStreamWrapper archiveStream;
-        private List<Entry> entries;
+#nullable enable
+        private readonly IInArchive? archive;
+        private readonly InStreamWrapper? archiveStream;
+        private List<Entry?>? entries;
         private int TotalCount;
+        private ulong LastSize = 0;
 
-        public event EventHandler<ExtractProgressProp> ExtractProgress;
+        public event EventHandler<ExtractProgressProp>? ExtractProgress;
         public void UpdateProgress(ExtractProgressProp e) => ExtractProgress?.Invoke(this, e);
 
-        public ArchiveFile(string archiveFilePath, string libraryFilePath = null)
+        public ArchiveFile(string? archiveFilePath)
         {
-            SevenZipFormat? format;
-            string extension = Path.GetExtension(archiveFilePath);
+            if (string.IsNullOrEmpty(archiveFilePath))
+                throw new ArgumentNullException("Archive path cannot be null!");
 
-            if (!this.GuessFormatFromExtension(extension, out format) || !this.GuessFormatFromSignature(archiveFilePath, out format))
+            SevenZipFormat? format;
+            string? extension = Path.GetExtension(archiveFilePath);
+
+            if (!this.GuessFormatFromExtension(extension, out _) || !this.GuessFormatFromSignature(archiveFilePath, out format))
                 throw new SevenZipException(Path.GetFileName(archiveFilePath) + " is not a known archive type");
 
-            this.archive = SevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format.Value]);
+            this.archive = SevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format ?? SevenZipFormat.Undefined]);
             this.archiveStream = new InStreamWrapper(File.OpenRead(archiveFilePath));
         }
 
-        public ArchiveFile(Stream archiveStream, SevenZipFormat? format = null, string libraryFilePath = null)
+        public ArchiveFile(Stream archiveStream, SevenZipFormat? format = null)
         {
             if (archiveStream == null)
             {
@@ -63,41 +68,35 @@ namespace SevenZipExtractor
                     throw new SevenZipException("Unable to guess format automatically");
             }
 
-            this.archive = SevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format.Value]);
+            this.archive = SevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format ?? SevenZipFormat.Undefined]);
             this.archiveStream = new InStreamWrapper(archiveStream);
-            this.TotalCount = Entries.Sum(x => x.IsFolder ? 0 : 1);
+            this.TotalCount = Entries.Sum(x => x?.IsFolder ?? false ? 0 : 1);
         }
 
         public void Extract(string outputFolder, bool overwrite = false)
         {
             this.Extract(entry =>
             {
-                string fileName = Path.Combine(outputFolder, entry.FileName);
+                string fileName = Path.Combine(outputFolder, entry?.FileName ?? string.Empty);
 
-                if (entry.IsFolder)
-                {
-                    return fileName;
-                }
-
-                if (!File.Exists(fileName) || overwrite)
-                {
-                    return fileName;
-                }
+                if (entry == null) return null;
+                if (entry.IsFolder) return fileName;
+                if (!File.Exists(fileName) || overwrite) return fileName;
 
                 return null;
             });
         }
 
-        public void Extract(Func<Entry, string> getOutputPath, CancellationToken Token = new CancellationToken())
+        public void Extract(Func<Entry?, string?> getOutputPath, CancellationToken Token = new CancellationToken())
         {
-            List<FileStream> fileStreams = new List<FileStream>();
-            ArchiveStreamsCallback streamCallback = null;
+            List<FileStream?> fileStreams = new List<FileStream?>();
+            ArchiveStreamsCallback? streamCallback = null;
 
             try
             {
-                foreach (Entry entry in Entries)
+                foreach (Entry? entry in Entries)
                 {
-                    string outputPath = getOutputPath(entry);
+                    string? outputPath = getOutputPath(entry);
 
                     if (outputPath == null) // getOutputPath = null means SKIP
                     {
@@ -105,19 +104,17 @@ namespace SevenZipExtractor
                         continue;
                     }
 
-                    if (entry.IsFolder)
+                    if (entry?.IsFolder ?? false)
                     {
                         Directory.CreateDirectory(outputPath);
                         fileStreams.Add(null);
                         continue;
                     }
 
-                    string directoryName = Path.GetDirectoryName(outputPath);
+                    string? directoryName = Path.GetDirectoryName(outputPath);
 
                     if (!string.IsNullOrWhiteSpace(directoryName))
-                    {
                         Directory.CreateDirectory(directoryName);
-                    }
 
                     fileStreams.Add(File.Create(outputPath));
                 }
@@ -126,20 +123,20 @@ namespace SevenZipExtractor
                 streamCallback = new ArchiveStreamsCallback(fileStreams, Token);
                 streamCallback.ReadProgress += StreamCallback_ReadProperty;
 
-                this.archive.Extract(null, 0xFFFFFFFF, 0, streamCallback);
+                this.archive?.Extract(null, 0xFFFFFFFF, 0, streamCallback);
                 Token.ThrowIfCancellationRequested();
             }
             catch (Exception) { throw; }
             finally
             {
-                ExtractProgressStopwatch.Stop();
-                fileStreams.ForEach(x => x?.Dispose());
-                fileStreams.Clear();
-                streamCallback.ReadProgress -= StreamCallback_ReadProperty;
+                ExtractProgressStopwatch?.Stop();
+                fileStreams?.ForEach(x => x?.Dispose());
+                fileStreams?.Clear();
+
+                if (streamCallback != null)
+                    streamCallback.ReadProgress -= StreamCallback_ReadProperty;
             }
         }
-
-        ulong LastSize = 0;
 
         private ulong GetLastSize(ulong input)
         {
@@ -152,13 +149,13 @@ namespace SevenZipExtractor
         }
 
         Stopwatch ExtractProgressStopwatch = Stopwatch.StartNew();
-        private void StreamCallback_ReadProperty(object sender, FileProgressProperty e)
+        private void StreamCallback_ReadProperty(object? sender, FileProgressProperty e)
         {
             UpdateProgress(new ExtractProgressProp(GetLastSize(e.StartRead),
                 e.StartRead, e.EndRead, ExtractProgressStopwatch.Elapsed.TotalSeconds, e.Count, TotalCount));
         }
 
-        public List<Entry> Entries
+        public List<Entry?> Entries
         {
             get
             {
@@ -168,20 +165,20 @@ namespace SevenZipExtractor
                 }
 
                 ulong checkPos = 32 * 1024;
-                int open = this.archive.Open(this.archiveStream, checkPos, null);
+                int open = this.archive?.Open(this.archiveStream, checkPos, null) ?? 0;
 
                 if (open != 0)
                 {
                     throw new SevenZipException("Unable to open archive");
                 }
 
-                uint itemsCount = this.archive.GetNumberOfItems();
+                uint itemsCount = this.archive?.GetNumberOfItems() ?? 0;
 
-                this.entries = new List<Entry>();
+                this.entries = new List<Entry?>();
 
                 for (uint fileIndex = 0; fileIndex < itemsCount; fileIndex++)
                 {
-                    string fileName = this.GetProperty<string>(fileIndex, ItemPropId.kpidPath);
+                    string? fileName = this.GetProperty<string>(fileIndex, ItemPropId.kpidPath);
                     bool isFolder = this.GetProperty<bool>(fileIndex, ItemPropId.kpidIsFolder);
                     bool isEncrypted = this.GetProperty<bool>(fileIndex, ItemPropId.kpidEncrypted);
                     ulong size = this.GetProperty<ulong>(fileIndex, ItemPropId.kpidSize);
@@ -191,9 +188,9 @@ namespace SevenZipExtractor
                     DateTime lastAccessTime = this.GetProperty<DateTime>(fileIndex, ItemPropId.kpidLastAccessTime);
                     uint crc = this.GetProperty<uint>(fileIndex, ItemPropId.kpidCRC);
                     uint attributes = this.GetProperty<uint>(fileIndex, ItemPropId.kpidAttributes);
-                    string comment = this.GetProperty<string>(fileIndex, ItemPropId.kpidComment);
-                    string hostOS = this.GetProperty<string>(fileIndex, ItemPropId.kpidHostOS);
-                    string method = this.GetProperty<string>(fileIndex, ItemPropId.kpidMethod);
+                    string? comment = this.GetProperty<string>(fileIndex, ItemPropId.kpidComment);
+                    string? hostOS = this.GetProperty<string>(fileIndex, ItemPropId.kpidHostOS);
+                    string? method = this.GetProperty<string>(fileIndex, ItemPropId.kpidMethod);
 
                     bool isSplitBefore = this.GetProperty<bool>(fileIndex, ItemPropId.kpidSplitBefore);
                     bool isSplitAfter = this.GetProperty<bool>(fileIndex, ItemPropId.kpidSplitAfter);
@@ -222,16 +219,14 @@ namespace SevenZipExtractor
             }
         }
 
-#nullable enable
         private T? GetProperty<T>(uint fileIndex, ItemPropId name)
         {
             PropVariant propVariant = new PropVariant();
-            this.archive.GetProperty(fileIndex, name, ref propVariant);
+            this.archive?.GetProperty(fileIndex, name, ref propVariant);
             T? obj = propVariant.GetObjectAndClear<T>();
             if (obj == null) return default;
             return obj;
         }
-#nullable disable
 
         private bool GuessFormatFromExtension(string fileExtension, out SevenZipFormat? format)
         {
@@ -346,5 +341,6 @@ namespace SevenZipExtractor
 
             GC.SuppressFinalize(this);
         }
+#nullable disable
     }
 }
