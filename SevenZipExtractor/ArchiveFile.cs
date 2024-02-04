@@ -89,7 +89,7 @@ namespace SevenZipExtractor
 
         public void Extract(Func<Entry?, string?> getOutputPath, CancellationToken Token = new CancellationToken())
         {
-            List<FileStream?> fileStreams = new List<FileStream?>();
+            List<Func<FileStream>?> fileStreams = new List<Func<FileStream>?>();
             ArchiveStreamsCallback? streamCallback = null;
 
             try
@@ -116,7 +116,7 @@ namespace SevenZipExtractor
                     if (!string.IsNullOrWhiteSpace(directoryName))
                         Directory.CreateDirectory(directoryName);
 
-                    fileStreams.Add(File.Create(outputPath));
+                    fileStreams.Add(() => File.Create(outputPath));
                 }
 
                 ExtractProgressStopwatch = Stopwatch.StartNew();
@@ -130,7 +130,6 @@ namespace SevenZipExtractor
             finally
             {
                 ExtractProgressStopwatch?.Stop();
-                fileStreams?.ForEach(x => x?.Dispose());
                 fileStreams?.Clear();
 
                 if (streamCallback != null)

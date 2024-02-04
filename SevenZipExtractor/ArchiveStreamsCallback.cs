@@ -21,11 +21,12 @@ namespace SevenZipExtractor
     [GeneratedComClass]
     internal sealed partial class ArchiveStreamsCallback : IArchiveExtractCallback
     {
-        private readonly List<FileStream> streams;
+        private readonly List<Func<FileStream>> streams;
         private readonly CancellationToken cancellationToken;
 
         private FileProgressProperty ProgressProperty;
         private FileStatusProperty StatusProperty;
+        private FileStream currentStream;
 
         public event EventHandler<FileProgressProperty> ReadProgress;
         public event EventHandler<FileStatusProperty> ReadStatus;
@@ -33,7 +34,7 @@ namespace SevenZipExtractor
         private void UpdateProgress(FileProgressProperty e) => ReadProgress?.Invoke(this, e);
         private void UpdateStatus(FileStatusProperty e) => ReadStatus?.Invoke(this, e);
 
-        public ArchiveStreamsCallback(List<FileStream> streams, CancellationToken cancellationToken)
+        public ArchiveStreamsCallback(List<Func<FileStream>> streams, CancellationToken cancellationToken)
         {
             this.streams = streams;
             this.cancellationToken = cancellationToken;
@@ -75,21 +76,20 @@ namespace SevenZipExtractor
                 return 0;
             }
 
-            FileStream stream = this.streams[(int)index];
+            Func<FileStream> streamFunc = this.streams[(int)index];
 
-            if (stream == null)
+            if (streamFunc == null)
             {
                 outStream = null;
                 return 0;
             }
-            else
-            {
-                this.ProgressProperty.Count = 0;
-                this.StatusProperty.Name = stream.Name;
-                UpdateStatus(this.StatusProperty);
-            }
 
-            outStream = new OutStreamWrapper(stream, this.cancellationToken);
+            currentStream = streamFunc();
+            this.ProgressProperty.Count = 0;
+            this.StatusProperty.Name = currentStream.Name;
+            UpdateStatus(this.StatusProperty);
+
+            outStream = new OutStreamWrapper(currentStream, this.cancellationToken);
             return 0;
         }
 
@@ -99,6 +99,7 @@ namespace SevenZipExtractor
 
         public void SetOperationResult(OperationResult resultEOperationResult)
         {
+            currentStream?.Dispose();
         }
     }
 }

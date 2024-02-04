@@ -335,7 +335,11 @@ namespace SevenZipExtractor
 
         ~StreamWrapper() => Dispose();
 
-        public void Dispose() => this.BaseStream.Dispose();
+        public void Dispose()
+        {
+            this.BaseStream.Dispose();
+            GC.SuppressFinalize(this);
+        }
 
         public virtual void Seek(long offset, uint seekOrigin, IntPtr newPosition)
         {
