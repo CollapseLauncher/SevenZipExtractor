@@ -10,9 +10,11 @@ namespace SevenZipExtractor
 {
     internal static class NativeMethods
     {
-        private const string SEVENZIPDLL_NAME = "7z.dll";
-        private const string SEVENZIPDLL_PATH = "Lib\\" + SEVENZIPDLL_NAME;
-        private static string CURRENTPROC_PATH = Process.GetCurrentProcess().MainModule!.FileName;
+        private const  string SEVENZIPDLL_NAME     = "7z.dll";
+        private const  string SEVENZIPDLLMINI_NAME = "7za.exe";
+        private const  string SEVENZIPDLL_PATH     = "Lib\\" + SEVENZIPDLL_NAME;
+        private const  string SEVENZIPDLLMINI_PATH = "Lib\\" + SEVENZIPDLLMINI_NAME;
+        private static string CURRENTPROC_PATH     = Process.GetCurrentProcess().MainModule!.FileName;
 
         static NativeMethods()
         {
@@ -22,47 +24,64 @@ namespace SevenZipExtractor
 
         private static IntPtr DllImportResolver(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
         {
-            IntPtr LoadDllInternal(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
-            {
-                Console.WriteLine($"[7-zip][NativeMethods::DllImportResolver] Loading library from path: {libraryName} | Search path: {(searchPath == null ? "Default" : searchPath)}");
-                // Try load the library and if fails, then throw.
-                bool isLoadSuccessful = NativeLibrary.TryLoad(libraryName, assembly, searchPath, out IntPtr pResult);
-                if (!isLoadSuccessful || pResult == IntPtr.Zero)
-                    throw new FileLoadException($"Failed while loading library from this path: {libraryName}\r\nMake sure that the library/.dll is a valid Win32 library and not corrupted!");
-
-                // If success, then return the pointer to the library
-                return pResult;
-            }
-
             // If the library to load is "7z.dll", then try load it
-            if (libraryName.EndsWith(SEVENZIPDLL_NAME, StringComparison.InvariantCultureIgnoreCase))
+            if (libraryName.EndsWith(SEVENZIPDLL_NAME, StringComparison.OrdinalIgnoreCase))
             {
-                // Get the root directory of the module, then try get the stock .dll path
-                string assemblyParentPath = Path.GetDirectoryName(CURRENTPROC_PATH);
-                string sevenZipStockPath = Path.Combine(assemblyParentPath, SEVENZIPDLL_PATH);
+                // Try load 7z.dll first
+                IntPtr dllLoadPtr = TryLoadRedirectedDll(SEVENZIPDLL_NAME, SEVENZIPDLL_PATH, assembly);
 
-                // If the stock .dll is not found in <collapse_install_path>\Lib\7z.dll,
-                // then try fallback to the one installed in the system (if exist)
-                if (!File.Exists(sevenZipStockPath))
-                {
-                    // Try fallback to the official 7-Zip's .dll
-                    if (File.Exists(sevenZipStockPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "7-Zip", SEVENZIPDLL_NAME))
-                    // If not found, try fallback to the ZStandard 7-Zip's .dll
-                     || File.Exists(sevenZipStockPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "7-Zip-Zstandard", SEVENZIPDLL_NAME))
-                    // If those two do not exist, then try fallback to the .dll in the <collapse_install_path>\7z.dll
-                     || File.Exists(sevenZipStockPath = Path.Combine(assemblyParentPath, SEVENZIPDLL_NAME)))
-                        return LoadDllInternal(sevenZipStockPath, assembly, null);
+                // If 7z.dll is not found, then fallback to 7za.dll
+                if (dllLoadPtr == IntPtr.Zero)
+                    dllLoadPtr = TryLoadRedirectedDll(SEVENZIPDLLMINI_NAME, SEVENZIPDLLMINI_PATH, assembly);
 
-                    // If all fails, throw
-                    throw new DllNotFoundException($"DLL file {SEVENZIPDLL_PATH} is not found!");
-                }
+                // If it returns non zero, return pointer.
+                if (dllLoadPtr != IntPtr.Zero)
+                    return dllLoadPtr;
 
-                // Load the stock 7z.dll library
-                return LoadDllInternal(sevenZipStockPath, assembly, null);
+                // Otherwise, throw as it's not found.
+                throw new DllNotFoundException($"Cannot find either 7za.dll or 7z.dll from stock \"Lib\" folder or your machine!");
             }
 
             // Load other library
             return LoadDllInternal(libraryName, assembly, searchPath);
+        }
+
+        private static IntPtr TryLoadRedirectedDll(string dllFileName, string dllFilePath, Assembly assembly)
+        {
+            // Get the root directory of the module, then try get the stock .dll path
+            string assemblyParentPath = Path.GetDirectoryName(CURRENTPROC_PATH);
+            string sevenZipStockPath  = Path.Combine(assemblyParentPath, dllFilePath);
+
+            // If the stock .dll is not found in <collapse_install_path>\Lib\<dllFileName>,
+            // then try fallback to the one installed in the system (if exist)
+            if (!File.Exists(sevenZipStockPath))
+            {
+                // Try fallback to the official 7-Zip's .dll
+                if (File.Exists(sevenZipStockPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "7-Zip", dllFileName))
+                    // If not found, try fallback to the ZStandard 7-Zip's .dll
+                    || File.Exists(sevenZipStockPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "7-Zip-Zstandard", dllFileName))
+                    // If those two do not exist, then try fallback to the .dll in the <collapse_install_path>\<dllFileName>
+                    || File.Exists(sevenZipStockPath = Path.Combine(assemblyParentPath, dllFileName)))
+                    return LoadDllInternal(sevenZipStockPath, assembly, null);
+
+                // If all fails, then return zero as fail
+                return IntPtr.Zero;
+            }
+
+            // Load the stock <dllFileName> library
+            return LoadDllInternal(sevenZipStockPath, assembly, null);
+        }
+
+        private static IntPtr LoadDllInternal(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
+        {
+            Console.WriteLine($"[7-zip][NativeMethods::DllImportResolver] Loading library from path: {libraryName} | Search path: {(searchPath == null ? "Default" : searchPath)}");
+            // Try load the library and if fails, then throw.
+            bool isLoadSuccessful = NativeLibrary.TryLoad(libraryName, assembly, searchPath, out IntPtr pResult);
+            if (!isLoadSuccessful || pResult == IntPtr.Zero)
+                throw new FileLoadException($"Failed while loading library from this path: {libraryName}\r\nMake sure that the library/.dll is a valid Win32 library and not corrupted!");
+
+            // If success, then return the pointer to the library
+            return pResult;
         }
 
         [DllImport(SEVENZIPDLL_PATH, EntryPoint = "CreateObject", ExactSpelling = true)]
