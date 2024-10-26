@@ -45,10 +45,7 @@ namespace SevenZipExtractor
             if (string.IsNullOrEmpty(archiveFilePath))
                 throw new ArgumentNullException("Archive path cannot be null!");
 
-            SevenZipFormat? format;
-            string? extension = Path.GetExtension(archiveFilePath);
-
-            if (!this.GuessFormatFromExtension(extension, out _) || !this.GuessFormatFromSignature(archiveFilePath, out format))
+            if (!this.GuessFormatFromSignature(archiveFilePath, out SevenZipFormat? format))
                 throw new SevenZipException(Path.GetFileName(archiveFilePath) + " is not a known archive type");
 
             this.archive = SevenZipHandle.CreateInArchive(Formats.FormatGuidMapping[format ?? SevenZipFormat.Undefined]);
@@ -226,39 +223,6 @@ namespace SevenZipExtractor
             if (obj == null) return default;
             return obj;
         }
-
-        private bool GuessFormatFromExtension(string fileExtension, out SevenZipFormat? format)
-        {
-            if (string.IsNullOrWhiteSpace(fileExtension))
-            {
-                format = SevenZipFormat.Undefined;
-                return false;
-            }
-
-            fileExtension = fileExtension.TrimStart('.').Trim().ToLowerInvariant();
-
-            if (fileExtension.Equals("rar"))
-            {
-                // 7z has different GUID for Pre-RAR5 and RAR5, but they have both same extension (.rar)
-                // If it is [0x52 0x61 0x72 0x21 0x1A 0x07 0x01 0x00] then file is RAR5 otherwise RAR.
-                // https://www.rarlab.com/technote.htm
-
-                // We are unable to guess right format just by looking at extension and have to check signature
-
-                format = SevenZipFormat.Undefined;
-                return false;
-            }
-
-            if (!Formats.ExtensionFormatMapping.ContainsKey(fileExtension))
-            {
-                format = SevenZipFormat.Undefined;
-                return false;
-            }
-
-            format = Formats.ExtensionFormatMapping[fileExtension];
-            return true;
-        }
-
 
         private bool GuessFormatFromSignature(string filePath, out SevenZipFormat? format)
         {
