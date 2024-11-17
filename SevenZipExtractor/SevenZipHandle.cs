@@ -84,10 +84,10 @@ namespace SevenZipExtractor
             return pResult;
         }
 
-        [DllImport(SEVENZIPDLL_PATH, EntryPoint = "CreateObject", ExactSpelling = true)]
+        [LibraryImport(SEVENZIPDLL_PATH, EntryPoint = "CreateObject")]
         internal static extern unsafe int CreateObjectDelegate(Guid* classID_native, Guid* interfaceID_native, void** outObject_native);
 
-        [DllImport("ole32.dll", EntryPoint = "PropVariantClear", ExactSpelling = true, SetLastError = true)]
+        [LibraryImport("ole32.dll", EntryPoint = "PropVariantClear", SetLastError = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         internal static extern int PropVariantClearInvoke(nint ptr);
     }
