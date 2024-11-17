@@ -25,7 +25,7 @@ namespace SevenZipExtractor
         public ulong TotalSize { get; private set; }
         public ulong Speed { get; private set; }
         public double PercentProgress => (TotalRead / (double)TotalSize) * 100;
-        public TimeSpan TimeLeft => TimeSpan.FromSeconds((TotalSize - TotalRead) / Speed);
+        public TimeSpan TimeLeft => TimeSpan.FromSeconds((TotalSize - TotalRead) / (double)Speed);
     }
 
     public sealed class ArchiveFile : IDisposable
@@ -35,7 +35,7 @@ namespace SevenZipExtractor
         private readonly InStreamWrapper? archiveStream;
         private List<Entry?>? entries;
         private int TotalCount;
-        private ulong LastSize = 0;
+        private ulong LastSize;
 
         public event EventHandler<ExtractProgressProp>? ExtractProgress;
         public void UpdateProgress(ExtractProgressProp e) => ExtractProgress?.Invoke(this, e);
@@ -43,7 +43,7 @@ namespace SevenZipExtractor
         public ArchiveFile(string? archiveFilePath)
         {
             if (string.IsNullOrEmpty(archiveFilePath))
-                throw new ArgumentNullException("Archive path cannot be null!");
+                throw new ArgumentNullException(nameof(archiveFilePath));
 
             if (!this.GuessFormatFromSignature(archiveFilePath, out SevenZipFormat? format))
                 throw new SevenZipException(Path.GetFileName(archiveFilePath) + " is not a known archive type");
@@ -123,11 +123,10 @@ namespace SevenZipExtractor
                 this.archive?.Extract(null, 0xFFFFFFFF, 0, streamCallback);
                 Token.ThrowIfCancellationRequested();
             }
-            catch (Exception) { throw; }
             finally
             {
-                ExtractProgressStopwatch?.Stop();
-                fileStreams?.Clear();
+                ExtractProgressStopwatch.Stop();
+                fileStreams.Clear();
 
                 if (streamCallback != null)
                     streamCallback.ReadProgress -= StreamCallback_ReadProperty;
@@ -298,12 +297,9 @@ namespace SevenZipExtractor
         public void Dispose()
         {
             this.archiveStream?.Dispose();
-
-            if (this.archive != null)
-                this.archive.Close();
+            this.archive?.Close();
 
             GC.SuppressFinalize(this);
         }
-#nullable disable
     }
 }

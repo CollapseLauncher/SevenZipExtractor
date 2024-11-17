@@ -50,7 +50,7 @@ namespace SevenZipExtractor
         {
             // Get the root directory of the module, then try get the stock .dll path
             string assemblyParentPath = Path.GetDirectoryName(CURRENTPROC_PATH);
-            string sevenZipStockPath  = Path.Combine(assemblyParentPath, dllFilePath);
+            string sevenZipStockPath  = Path.Combine(assemblyParentPath ?? "", dllFilePath);
 
             // If the stock .dll is not found in <collapse_install_path>\Lib\<dllFileName>,
             // then try fallback to the one installed in the system (if exist)
@@ -61,7 +61,7 @@ namespace SevenZipExtractor
                     // If not found, try fallback to the ZStandard 7-Zip's .dll
                     || File.Exists(sevenZipStockPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "7-Zip-Zstandard", dllFileName))
                     // If those two do not exist, then try fallback to the .dll in the <collapse_install_path>\<dllFileName>
-                    || File.Exists(sevenZipStockPath = Path.Combine(assemblyParentPath, dllFileName)))
+                    || File.Exists(sevenZipStockPath = Path.Combine(assemblyParentPath ?? "", dllFileName)))
                     return LoadDllInternal(sevenZipStockPath, assembly, null);
 
                 // If all fails, then return zero as fail
@@ -85,7 +85,7 @@ namespace SevenZipExtractor
         }
 
         [LibraryImport(SEVENZIPDLL_PATH, EntryPoint = "CreateObject")]
-        internal static unsafe partial int CreateObjectDelegate(Guid* classID_native, Guid* interfaceID_native, void** outObject_native);
+        internal static unsafe partial int CreateObjectDelegate(Guid* classIDNative, Guid* interfaceIDNative, void** outObject_native);
 
         [LibraryImport("ole32.dll", EntryPoint = "PropVariantClear", SetLastError = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
@@ -95,32 +95,30 @@ namespace SevenZipExtractor
     // This code was taken from .NET 8 DllImport's generated codes
     internal static class SevenZipHandle
     {
-        private static unsafe int CreateObjectDelegate(ref Guid classID, ref Guid interfaceID, out IInArchive outObject)
+        private static unsafe void CreateObjectDelegate(ref Guid       classID, ref Guid interfaceID,
+                                                        out IInArchive outObject)
         {
             bool invokeSucceeded = default;
             Unsafe.SkipInit(out outObject);
-            void* outObject_native = default;
-            int retVal = default;
+            void* outObjectNative = default;
             try
             {
-                fixed (Guid* interfaceID_native = &interfaceID)
-                fixed (Guid* classID_native = &classID)
-                {
-                    retVal = NativeMethods.CreateObjectDelegate(classID_native, interfaceID_native, &outObject_native);
-                }
+                fixed (Guid* interfaceIDNative = &interfaceID)
+                    fixed (Guid* classIDNative = &classID)
+                    {
+                        NativeMethods.CreateObjectDelegate(classIDNative, interfaceIDNative, &outObjectNative);
+                    }
 
                 invokeSucceeded = true;
-                outObject = ComInterfaceMarshaller<IInArchive>.ConvertToManaged(outObject_native);
+                outObject = ComInterfaceMarshaller<IInArchive>.ConvertToManaged(outObjectNative);
             }
             finally
             {
                 if (invokeSucceeded)
                 {
-                    ComInterfaceMarshaller<IInArchive>.Free(outObject_native);
+                    ComInterfaceMarshaller<IInArchive>.Free(outObjectNative);
                 }
             }
-
-            return retVal;
         }
 
         internal static IInArchive CreateInArchive(Guid classId)
