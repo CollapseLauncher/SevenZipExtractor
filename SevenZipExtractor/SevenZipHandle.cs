@@ -8,7 +8,7 @@ using System.Runtime.InteropServices.Marshalling;
 
 namespace SevenZipExtractor
 {
-    internal static class NativeMethods
+    internal static partial class NativeMethods
     {
         private const  string SEVENZIPDLL_NAME     = "7z.dll";
         private const  string SEVENZIPDLLMINI_NAME = "7za.exe";
@@ -85,11 +85,11 @@ namespace SevenZipExtractor
         }
 
         [LibraryImport(SEVENZIPDLL_PATH, EntryPoint = "CreateObject")]
-        internal static extern unsafe int CreateObjectDelegate(Guid* classID_native, Guid* interfaceID_native, void** outObject_native);
+        internal static unsafe partial int CreateObjectDelegate(Guid* classID_native, Guid* interfaceID_native, void** outObject_native);
 
         [LibraryImport("ole32.dll", EntryPoint = "PropVariantClear", SetLastError = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        internal static extern int PropVariantClearInvoke(nint ptr);
+        internal static partial int PropVariantClearInvoke(nint ptr);
     }
 
     // This code was taken from .NET 8 DllImport's generated codes
