@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
@@ -355,7 +356,7 @@ namespace SevenZipExtractor
         {
         }
 
-        public uint Read(byte[] data, uint size) => (uint)this.BaseStream.Read(data);
+        public uint Read(byte[] data, uint size) => (uint)this.BaseStream.Read(data, 0, (int)size);
     }
 
     [GeneratedComClass]
@@ -377,8 +378,15 @@ namespace SevenZipExtractor
         public int Write(byte[] data, uint size, IntPtr processedSize)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            this.BaseStream.Write(data);
-            if (processedSize != IntPtr.Zero) Marshal.WriteInt64(processedSize, (int)size);
+
+            int sizeAsInt = (int)size;
+            Debug.Assert(data.Length == sizeAsInt);
+
+            lock (BaseStream)
+            {
+                this.BaseStream.Write(data, 0, sizeAsInt);
+            }
+            if (processedSize != IntPtr.Zero) Marshal.WriteInt64(processedSize, sizeAsInt);
             return 0;
         }
     }
