@@ -380,11 +380,13 @@ namespace SevenZipExtractor
             cancellationToken.ThrowIfCancellationRequested();
 
             int sizeAsInt = (int)size;
-            Debug.Assert(data.Length == sizeAsInt);
 
             lock (BaseStream)
             {
                 this.BaseStream.Write(data, 0, sizeAsInt);
+#if DEBUG
+                Debug.Assert(data.Length == sizeAsInt);
+#endif
             }
             if (processedSize != IntPtr.Zero) Marshal.WriteInt64(processedSize, sizeAsInt);
             return 0;
