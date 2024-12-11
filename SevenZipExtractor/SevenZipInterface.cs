@@ -251,7 +251,7 @@ namespace SevenZipExtractor
 
         void Seek(
             long offset,
-            uint seekOrigin,
+            SeekOrigin seekOrigin,
             IntPtr newPosition); // ref long newPosition
     }
 
@@ -268,7 +268,7 @@ namespace SevenZipExtractor
 
         void Seek(
             long offset,
-            uint seekOrigin,
+            SeekOrigin seekOrigin,
             IntPtr newPosition); // ref long newPosition
 
         [PreserveSig]
@@ -342,9 +342,9 @@ namespace SevenZipExtractor
             GC.SuppressFinalize(this);
         }
 
-        public virtual void Seek(long offset, uint seekOrigin, IntPtr newPosition)
+        public virtual void Seek(long offset, SeekOrigin seekOrigin, IntPtr newPosition)
         {
-            long Position = this.BaseStream.Seek(offset, (SeekOrigin)seekOrigin);
+            long Position = this.BaseStream.Seek(offset, seekOrigin);
             if (newPosition != IntPtr.Zero) Marshal.WriteInt64(newPosition, Position);
         }
     }
