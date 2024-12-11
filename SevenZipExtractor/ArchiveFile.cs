@@ -91,6 +91,14 @@ namespace SevenZipExtractor
 
             try
             {
+                FileStreamOptions fileStreamOptions = new FileStreamOptions()
+                {
+                    Mode = FileMode.Create,
+                    Access = FileAccess.Write,
+                    Share = FileShare.ReadWrite,
+                    BufferSize = 1 << 20
+                };
+
                 foreach (Entry? entry in Entries)
                 {
                     string? outputPath = getOutputPath(entry);
@@ -113,7 +121,7 @@ namespace SevenZipExtractor
                     if (!string.IsNullOrWhiteSpace(directoryName))
                         Directory.CreateDirectory(directoryName);
 
-                    fileStreams.Add(() => File.Create(outputPath));
+                    fileStreams.Add(() => File.Open(outputPath, fileStreamOptions));
                 }
 
                 ExtractProgressStopwatch = Stopwatch.StartNew();
