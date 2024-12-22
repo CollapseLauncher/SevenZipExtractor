@@ -103,7 +103,7 @@ namespace SevenZipExtractor
                 {
                     string? outputPath = getOutputPath(entry);
 
-                    if (outputPath == null) // getOutputPath = null means SKIP
+                    if (string.IsNullOrEmpty(outputPath) || string.IsNullOrWhiteSpace(outputPath)) // getOutputPath = null or empty means SKIP
                     {
                         fileStreams.Add(null);
                         continue;
@@ -116,12 +116,16 @@ namespace SevenZipExtractor
                         continue;
                     }
 
-                    string? directoryName = Path.GetDirectoryName(outputPath);
+                    // Always unassign read-only attribute from file
+                    FileInfo fileInfo = new FileInfo(outputPath);
+                    if (fileInfo.Exists)
+                    {
+                        fileInfo.IsReadOnly = false;
+                    }
 
-                    if (!string.IsNullOrWhiteSpace(directoryName))
-                        Directory.CreateDirectory(directoryName);
+                    fileInfo.Directory?.Create();
 
-                    fileStreams.Add(() => File.Open(outputPath, fileStreamOptions));
+                    fileStreams.Add(() => fileInfo.Open(fileStreamOptions));
                 }
 
                 ExtractProgressStopwatch = Stopwatch.StartNew();
