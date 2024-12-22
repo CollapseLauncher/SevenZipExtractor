@@ -123,7 +123,10 @@ namespace SevenZipExtractor
                         fileInfo.IsReadOnly = false;
                     }
 
-                    fileInfo.Directory?.Create();
+                    if (!(fileInfo.Directory?.Exists ?? true))
+                    {
+                        fileInfo.Directory?.Create();
+                    }
 
                     fileStreams.Add(() => fileInfo.Open(fileStreamOptions));
                 }
