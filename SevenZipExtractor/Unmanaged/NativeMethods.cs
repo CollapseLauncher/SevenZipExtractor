@@ -11,11 +11,13 @@ namespace SevenZipExtractor.Unmanaged
 {
     internal static partial class NativeMethods
     {
-        private const           string SevenZipMainDllName = "7z.dll";
-        private const           string SevenZipMainDllPath = "Lib\\" + SevenZipMainDllName;
-        private const           string SevenZipMiniDllName = "7za.exe";
-        private const           string SevenZipMiniDllPath = "Lib\\" + SevenZipMiniDllName;
-        private static readonly string CurrentProcessPath  = Process.GetCurrentProcess().MainModule!.FileName;
+        private const           string SevenZipMainDllName  = "7z.dll";
+        private const           string SevenZipMainDllPath  = "Lib\\" + SevenZipMainDllName;
+        private const           string SevenZipMiniDllName  = "7za.dll";
+        private const           string SevenZipMiniDllPath  = "Lib\\" + SevenZipMiniDllName;
+        private const           string SevenZipEMiniDllName = "7zxa.dll";
+        private const           string SevenZipEMiniDllPath = "Lib\\" + SevenZipEMiniDllName;
+        private static readonly string CurrentProcessPath   = Process.GetCurrentProcess().MainModule!.FileName;
 
         static NativeMethods()
         {
@@ -29,16 +31,22 @@ namespace SevenZipExtractor.Unmanaged
             if (!libraryName.EndsWith(SevenZipMainDllName, StringComparison.OrdinalIgnoreCase))
             {
                 // Load other library
-                return LoadDllInternal(libraryName, assembly, searchPath);
+                return LoadDllInternal(libraryName, assembly, searchPath, true);
             }
 
-            // Try load 7z.dll first
-            IntPtr dllLoadPtr = TryLoadRedirectedDll(SevenZipMainDllName, SevenZipMainDllPath, assembly);
+            // Try load 7zxa.dll first
+            IntPtr dllLoadPtr = TryLoadRedirectedDll(SevenZipEMiniDllName, SevenZipEMiniDllPath, assembly, false);
 
-            // If 7z.dll is not found, then fallback to 7za.dll
+            // If 7zxa.dll is not found, then fallback to 7za.dll
             if (dllLoadPtr == IntPtr.Zero)
             {
-                dllLoadPtr = TryLoadRedirectedDll(SevenZipMiniDllName, SevenZipMiniDllPath, assembly);
+                dllLoadPtr = TryLoadRedirectedDll(SevenZipMiniDllName, SevenZipMiniDllPath, assembly, false);
+            }
+
+            // If 7za.dll is not found, then fallback to 7z.dll
+            if (dllLoadPtr == IntPtr.Zero)
+            {
+                dllLoadPtr = TryLoadRedirectedDll(SevenZipMainDllName, SevenZipMainDllPath, assembly);
             }
 
             // If it returns non zero, return pointer.
@@ -48,10 +56,10 @@ namespace SevenZipExtractor.Unmanaged
             }
 
             // Otherwise, throw as it's not found.
-            throw new DllNotFoundException($"Cannot find either 7za.dll or 7z.dll from stock \"Lib\" folder or your machine!");
+            throw new DllNotFoundException("Cannot find or load either 7zxa.dll or 7za.dll or 7z.dll from stock \"Lib\" folder or \"Program Files\" on your machine!");
         }
 
-        private static IntPtr TryLoadRedirectedDll(string dllFileName, string dllFilePath, Assembly assembly)
+        private static IntPtr TryLoadRedirectedDll(string dllFileName, string dllFilePath, Assembly assembly, bool throwIfFail = true)
         {
             // Get the root directory of the module, then try to get the stock .dll path
             string? assemblyParentPath = Path.GetDirectoryName(CurrentProcessPath);
@@ -61,7 +69,7 @@ namespace SevenZipExtractor.Unmanaged
             if (File.Exists(sevenZipStockPath))
             {
                 // Load the stock <dllFileName> library
-                return LoadDllInternal(sevenZipStockPath, assembly, null);
+                return LoadDllInternal(sevenZipStockPath, assembly, null, throwIfFail);
             }
 
             // If the stock .dll is not found in <collapse_install_path>\Lib\<dllFileName>,
@@ -73,18 +81,18 @@ namespace SevenZipExtractor.Unmanaged
             || File.Exists(sevenZipStockPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "7-Zip-Zstandard", dllFileName))
             // If those two do not exist, then try fallback to the .dll in the <collapse_install_path>\<dllFileName>
             || File.Exists(sevenZipStockPath = Path.Combine(assemblyParentPath ?? "", dllFileName)))
-            return LoadDllInternal(sevenZipStockPath, assembly, null);
+            return LoadDllInternal(sevenZipStockPath, assembly, null, throwIfFail);
 
             // If all fails, then return zero as fail
             return IntPtr.Zero;
         }
 
-        private static IntPtr LoadDllInternal(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
+        private static IntPtr LoadDllInternal(string libraryName, Assembly assembly, DllImportSearchPath? searchPath, bool throwIfFail)
         {
             Console.WriteLine($"[7-zip][NativeMethods::DllImportResolver] Loading library from path: {libraryName} | Search path: {(searchPath == null ? "Default" : searchPath)}");
             // Try load the library and if fails, then throw.
             bool isLoadSuccessful = NativeLibrary.TryLoad(libraryName, assembly, searchPath, out IntPtr pResult);
-            if (!isLoadSuccessful || pResult == IntPtr.Zero)
+            if ((!isLoadSuccessful || pResult == IntPtr.Zero) && throwIfFail)
                 throw new FileLoadException($"Failed while loading library from this path: {libraryName}\r\nMake sure that the library/.dll is a valid Win32 library and not corrupted!");
 
             // If success, then return the pointer to the library
@@ -132,9 +140,5 @@ namespace SevenZipExtractor.Unmanaged
 
         [LibraryImport(SevenZipMainDllPath, EntryPoint = "CreateObject")]
         internal static unsafe partial int CreateObjectDelegate(Guid* classIDNative, Guid* interfaceIDNative, void** outObjectNative);
-
-        [LibraryImport("ole32.dll", EntryPoint = "PropVariantClear", SetLastError = true)]
-        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        internal static partial int PropVariantClearInvoke(nint ptr);
     }
 }
