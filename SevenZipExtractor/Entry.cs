@@ -1,4 +1,6 @@
-﻿using System;
+﻿using SevenZipExtractor.Interface;
+using SevenZipExtractor.IO.Callback;
+using System;
 using System.IO;
 using System.Threading;
 
@@ -6,19 +8,19 @@ namespace SevenZipExtractor
 {
     public sealed class Entry
     {
-        private readonly IInArchive archive;
-        private readonly uint index;
+        private readonly IInArchive? _archive;
+        private readonly uint        _index;
 
-        internal Entry(IInArchive archive, uint index)
+        internal Entry(IInArchive? archive, uint index)
         {
-            this.archive = archive;
-            this.index = index;
+            _archive = archive;
+            _index = index;
         }
 
         /// <summary>
         /// Name of the file with its relative path within the archive
         /// </summary>
-        public string FileName { get; internal set; }
+        public string? FileName { get; internal set; }
         /// <summary>
         /// True if entry is a folder, false if it is a file
         /// </summary>
@@ -50,12 +52,12 @@ namespace SevenZipExtractor
         /// <summary>
         /// CRC hash of the entry
         /// </summary>
-        public UInt32 CRC { get; internal set; }
+        public uint Crc { get; internal set; }
 
         /// <summary>
         /// Attributes of the entry
         /// </summary>
-        public UInt32 Attributes { get; internal set; }
+        public uint Attributes { get; internal set; }
 
         /// <summary>
         /// True if entry is encrypted, otherwise false
@@ -65,17 +67,17 @@ namespace SevenZipExtractor
         /// <summary>
         /// Comment of the entry
         /// </summary>
-        public string Comment { get; internal set; }
+        public string? Comment { get; internal set; }
 
         /// <summary>
         /// Compression method of the entry
         /// </summary>
-        public string Method { get; internal set; }
+        public string? Method { get; internal set; }
 
         /// <summary>
         /// Host operating system of the entry
         /// </summary>
-        public string HostOS { get; internal set; }
+        public string? HostOs { get; internal set; }
 
         /// <summary>
         /// True if there are parts of this file in previous split archive parts
@@ -89,33 +91,33 @@ namespace SevenZipExtractor
 
         public void Extract(string fileName, bool preserveTimestamp = true, CancellationToken cancellationToken = default)
         {
-            if (this.IsFolder)
+            if (IsFolder)
             {
                 Directory.CreateDirectory(fileName);
                 return;
             }
 
-            string directoryName = Path.GetDirectoryName(fileName);
+            string? directoryName = Path.GetDirectoryName(fileName);
 
-            if (!string.IsNullOrWhiteSpace(directoryName))
+            if (!string.IsNullOrEmpty(directoryName))
             {
                 Directory.CreateDirectory(directoryName);
             }
 
             using (FileStream fileStream = File.Create(fileName))
             {
-                this.Extract(fileStream, cancellationToken);
+                Extract(fileStream, cancellationToken);
             }
 
             if (preserveTimestamp)
             {
-                File.SetLastWriteTime(fileName, this.LastWriteTime);
+                File.SetLastWriteTime(fileName, LastWriteTime);
             }
         }
 
         public void Extract(Stream stream, CancellationToken cancellationToken)
         {
-            this.archive.Extract(new[] { this.index }, 1, 0, new ArchiveStreamCallback(this.index, stream, cancellationToken));
+            _archive?.Extract([_index], 1, 0, new ArchiveStreamCallback(_index, stream, cancellationToken));
         }
     }
 }

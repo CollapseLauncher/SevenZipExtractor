@@ -1,11 +1,10 @@
-namespace SevenZipExtractor
+namespace SevenZipExtractor.Enum
 {
-    /// <summary>
-    /// 
-    /// </summary>
     public enum SevenZipFormat
     {
-        // Default invalid format value
+        /// <summary>
+        /// Format is undefined or unknown
+        /// </summary>
         Undefined = 0,
 
         /// <summary>
