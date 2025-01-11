@@ -46,8 +46,8 @@ namespace SevenZipExtractor.IO.Callback
             {
                 Mode       = FileMode.Create,
                 Access     = FileAccess.Write,
-                Share      = FileShare.ReadWrite,
-                BufferSize = 1 << 20
+                Share      = FileShare.Write,
+                BufferSize = outputBufferSize
             };
 
             List<Func<Stream>?> outStreamDelegates  = [];
