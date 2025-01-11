@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,24 +20,47 @@ using System.Threading.Tasks;
 
 namespace SevenZipExtractor
 {
+    /// <summary>
+    /// Instance of the Archive file.
+    /// </summary>
     public sealed class ArchiveFile : IDisposable
     {
         private const    int             DefaultOutBufferSize = 4 << 10;
+
         private readonly IInArchive?     _archive;
         private readonly InStreamWrapper _archiveStream;
         private          ulong           _lastSize;
         private          Stopwatch       _extractProgressStopwatch = Stopwatch.StartNew();
 
+        /// <summary>
+        /// Occurs when the extraction progress changes.
+        /// </summary>
         public event EventHandler<ExtractProgressProp>? ExtractProgress;
 
+        /// <summary>
+        /// Gets the list of entries in the archive.
+        /// </summary>
         public List<Entry> Entries { get; }
+
+        /// <summary>
+        /// Gets the count of files in the archive.
+        /// </summary>
         public int Count { get; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ArchiveFile"/> class from the specified archive file path.
+        /// </summary>
+        /// <param name="archiveFilePath">The path to the archive file.</param>
         public ArchiveFile(string archiveFilePath) :
             this(File.Open(archiveFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ArchiveFile"/> class from the specified archive stream and format.
+        /// </summary>
+        /// <param name="archiveStream">The stream of the archive file.</param>
+        /// <param name="format">The format of the archive file. Default is <see cref="SevenZipFormat.Undefined"/> for automatic detection.</param>
         public ArchiveFile(Stream archiveStream, SevenZipFormat format = SevenZipFormat.Undefined)
         {
             ArgumentNullException.ThrowIfNull(archiveStream, nameof(archiveStream));
@@ -60,35 +84,90 @@ namespace SevenZipExtractor
             Count          = Entries.Select(x => x.IsFolder ? 0 : 1).Sum();
         }
 
-        ~ArchiveFile()
-        {
-            Dispose();
-        }
+        ~ArchiveFile() => Dispose();
 
+        /// <summary>
+        /// Creates an instance of <see cref="ArchiveFile"/> from the specified archive file path.
+        /// </summary>
+        /// <param name="archiveFilePath">The path to the archive file.</param>
+        /// <returns>A new instance of <see cref="ArchiveFile"/>.</returns>
         public static ArchiveFile Create(string archiveFilePath)
             => new(archiveFilePath);
 
+        /// <summary>
+        /// Creates an instance of <see cref="ArchiveFile"/> from the specified archive stream and format.
+        /// </summary>
+        /// <param name="archiveStream">The stream of the archive file.</param>
+        /// <param name="format">The format of the archive file. Default is <see cref="SevenZipFormat.Undefined"/> for automatic detection.</param>
+        /// <returns>A new instance of <see cref="ArchiveFile"/>.</returns>
         public static ArchiveFile Create(Stream archiveStream, SevenZipFormat format = SevenZipFormat.Undefined)
             => new(archiveStream, format);
 
+        /// <summary>
+        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder.
+        /// </summary>
+        /// <param name="outputFolder">The folder where the files will be extracted.</param>
+        /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
         public void Extract(string outputFolder, bool overwrite = true, CancellationToken token = default)
             => Extract(entry => GetEntryPathInner(entry, outputFolder), overwrite, true, DefaultOutBufferSize, token);
 
+        /// <summary>
+        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder.
+        /// </summary>
+        /// <param name="outputFolder">The folder where the files will be extracted.</param>
+        /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
+        /// <param name="outputBufferSize">The size of the output buffer.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
         public void Extract(string outputFolder, bool overwrite, int outputBufferSize, CancellationToken token = default)
             => Extract(entry => GetEntryPathInner(entry, outputFolder), overwrite, true, outputBufferSize, token);
 
+        /// <summary>
+        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder.
+        /// </summary>
+        /// <param name="outputFolder">The folder where the files will be extracted.</param>
+        /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
+        /// <param name="preserveTimestamp">Indicates whether to preserve the original timestamps of the files.</param>
+        /// <param name="outputBufferSize">The size of the output buffer.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
         public void Extract(string outputFolder, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token = default)
             => Extract(entry => GetEntryPathInner(entry, outputFolder), overwrite, preserveTimestamp, outputBufferSize, token);
 
+        /// <summary>
+        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder.
+        /// </summary>
+        /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
         public void Extract(Func<Entry, string?> getOutputPath, CancellationToken token = default)
             => Extract(getOutputPath, true, true, DefaultOutBufferSize, token);
 
+        /// <summary>
+        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder.
+        /// </summary>
+        /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
+        /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
         public void Extract(Func<Entry, string?> getOutputPath, bool overwrite, CancellationToken token = default)
             => Extract(getOutputPath, overwrite, true, DefaultOutBufferSize, token);
 
+        /// <summary>
+        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder.
+        /// </summary>
+        /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
+        /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
+        /// <param name="preserveTimestamp">Indicates whether to preserve the original timestamps of the files.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
         public void Extract(Func<Entry, string?> getOutputPath, bool overwrite, bool preserveTimestamp = true, CancellationToken token = default)
             => Extract(getOutputPath, overwrite, preserveTimestamp, DefaultOutBufferSize, token);
 
+        /// <summary>
+        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder.
+        /// </summary>
+        /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
+        /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
+        /// <param name="preserveTimestamp">Indicates whether to preserve the original timestamps of the files.</param>
+        /// <param name="outputBufferSize">The size of the output buffer.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
         public void Extract(Func<Entry, string?> getOutputPath, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token = default)
         {
             ArchiveStreamsCallback? streamCallback = null;
@@ -96,7 +175,7 @@ namespace SevenZipExtractor
 
             try
             {
-                streamCallback              =  ArchiveStreamsCallback.Create(getOutputPath, Entries, overwrite, preserveTimestamp, outputBufferSize, token);
+                streamCallback = ArchiveStreamsCallback.Create(getOutputPath, Entries, overwrite, preserveTimestamp, outputBufferSize, token);
                 streamCallback.ReadProgress += StreamCallback_ReadProperty;
 
                 _lastSize                 = 0;
@@ -113,30 +192,84 @@ namespace SevenZipExtractor
             }
         }
 
-        public Task ExtractAsync(string outputFolder, bool overwrite = true, CancellationToken token = default)
+        /// <summary>
+        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
+        /// </summary>
+        /// <param name="outputFolder">The folder where the files will be extracted.</param>
+        /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
+        /// <returns>A task that represents the asynchronous extraction operation.</returns>
+        public ConfiguredTaskAwaitable ExtractAsync(string outputFolder, bool overwrite = true, CancellationToken token = default)
             => ExtractAsync(entry => GetEntryPathInner(entry, outputFolder), overwrite, true, DefaultOutBufferSize, token);
 
-        public Task ExtractAsync(string outputFolder, bool overwrite, int outputBufferSize, CancellationToken token = default)
+        /// <summary>
+        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
+        /// </summary>
+        /// <param name="outputFolder">The folder where the files will be extracted.</param>
+        /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
+        /// <param name="outputBufferSize">The size of the output buffer.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
+        /// <returns>A task that represents the asynchronous extraction operation.</returns>
+        public ConfiguredTaskAwaitable ExtractAsync(string outputFolder, bool overwrite, int outputBufferSize, CancellationToken token = default)
             => ExtractAsync(entry => GetEntryPathInner(entry, outputFolder), overwrite, true, outputBufferSize, token);
 
-        public Task ExtractAsync(string outputFolder, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token = default)
+        /// <summary>
+        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
+        /// </summary>
+        /// <param name="outputFolder">The folder where the files will be extracted.</param>
+        /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
+        /// <param name="preserveTimestamp">Indicates whether to preserve the original timestamps of the files.</param>
+        /// <param name="outputBufferSize">The size of the output buffer.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
+        /// <returns>A task that represents the asynchronous extraction operation.</returns>
+        public ConfiguredTaskAwaitable ExtractAsync(string outputFolder, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token = default)
             => ExtractAsync(entry => GetEntryPathInner(entry, outputFolder), overwrite, preserveTimestamp, outputBufferSize, token);
 
-        public Task ExtractAsync(Func<Entry, string?> getOutputPath, CancellationToken token = default)
+        /// <summary>
+        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
+        /// </summary>
+        /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
+        /// <returns>A task that represents the asynchronous extraction operation.</returns>
+        public ConfiguredTaskAwaitable ExtractAsync(Func<Entry, string?> getOutputPath, CancellationToken token = default)
             => ExtractAsync(getOutputPath, true, true, DefaultOutBufferSize, token);
 
-        public Task ExtractAsync(Func<Entry, string?> getOutputPath, bool overwrite, CancellationToken token = default)
+        /// <summary>
+        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
+        /// </summary>
+        /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
+        /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
+        /// <returns>A task that represents the asynchronous extraction operation.</returns>
+        public ConfiguredTaskAwaitable ExtractAsync(Func<Entry, string?> getOutputPath, bool overwrite, CancellationToken token = default)
             => ExtractAsync(getOutputPath, overwrite, true, DefaultOutBufferSize, token);
 
-        public Task ExtractAsync(Func<Entry, string?> getOutputPath, bool overwrite, int outputBufferSize, CancellationToken token = default)
+        /// <summary>
+        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
+        /// </summary>
+        /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
+        /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
+        /// <param name="outputBufferSize">The size of the output buffer.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
+        /// <returns>A task that represents the asynchronous extraction operation.</returns>
+        public ConfiguredTaskAwaitable ExtractAsync(Func<Entry, string?> getOutputPath, bool overwrite, int outputBufferSize, CancellationToken token = default)
             => ExtractAsync(getOutputPath, overwrite, true, outputBufferSize, token);
 
-        public Task ExtractAsync(Func<Entry, string?> getOutputPath, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token = default)
+        /// <summary>
+        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
+        /// </summary>
+        /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
+        /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
+        /// <param name="preserveTimestamp">Indicates whether to preserve the original timestamps of the files.</param>
+        /// <param name="outputBufferSize">The size of the output buffer.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
+        /// <returns>A task that represents the asynchronous extraction operation.</returns>
+        public ConfiguredTaskAwaitable ExtractAsync(Func<Entry, string?> getOutputPath, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token = default)
             => Task.Factory.StartNew(
                 () => Extract(getOutputPath, overwrite, preserveTimestamp, outputBufferSize, token),
                 token,
                 TaskCreationOptions.LongRunning,
-                TaskScheduler.Default);
+                TaskScheduler.Default).ConfigureAwait(false);
 
         private static string GetEntryPathInner(Entry entry, string outputFolder)
             => Path.Combine(outputFolder, entry.FileName ?? string.Empty);
@@ -148,7 +281,7 @@ namespace SevenZipExtractor
                 throw new InvalidOperationException("Archive is not initialized");
             }
 
-            List<Entry> entries  = [];
+            List<Entry> entries  = new();
             const ulong checkPos = 32 * 1024;
             int         hResult  = archive.Open(archiveStream, checkPos, null);
 
@@ -258,6 +391,9 @@ namespace SevenZipExtractor
             }
         }
 
+        /// <summary>
+        /// Releases all resources used by the <see cref="ArchiveFile"/> class.
+        /// </summary>
         public void Dispose()
         {
             _archiveStream.Dispose();

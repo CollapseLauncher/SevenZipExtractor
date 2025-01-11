@@ -3,9 +3,11 @@ using SevenZipExtractor.Interface;
 using SevenZipExtractor.IO.Callback;
 using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace SevenZipExtractor
 {
@@ -123,7 +125,7 @@ namespace SevenZipExtractor
         }
 
         private static unsafe T GetUnmanagedProperty<T>(IInArchive archive, uint fileIndex, ItemPropId name)
-            where               T : unmanaged
+            where T : unmanaged
         {
             ComVariant propVariant = ComVariant.Null;
             archive?.GetProperty(fileIndex, name, &propVariant);
@@ -142,7 +144,14 @@ namespace SevenZipExtractor
                    };
         }
 
-        public void Extract(string fileName, bool preserveTimestamp = true, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Extract this specific entry of the file. Use <seealso cref="ArchiveFile.Extract"/> instead if you want to extract the whole archive.
+        /// Extracting specific entry one-by-one might be slower for some formats, especially with Solid-block enabled archives.
+        /// </summary>
+        /// <param name="fileName">Path where the file will be extracted.</param>
+        /// <param name="preserveTimestamp">Preserve the timestamp of the file.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
+        public void Extract(string fileName, bool preserveTimestamp = true, CancellationToken token = default)
         {
             if (IsFolder)
             {
@@ -157,12 +166,45 @@ namespace SevenZipExtractor
             }
 
             using FileStream fileStream = File.Create(fileName);
-            Extract(fileStream, preserveTimestamp, cancellationToken);
+            Extract(fileStream, preserveTimestamp, token);
         }
 
-        public void Extract(Stream stream, bool preserveTimestamp, CancellationToken cancellationToken)
-        {
-            _archive?.Extract([_index], 1, 0, new ArchiveStreamCallback(_index, stream, LastWriteTime, preserveTimestamp, cancellationToken));
-        }
+        /// <summary>
+        /// Extract this specific entry of the file asynchronously. Use <seealso cref="ArchiveFile.ExtractAsync"/> instead if you want to extract the whole archive.<br/>
+        /// Extracting specific entry one-by-one might be slower for some formats, especially with Solid-block enabled archives.
+        /// </summary>
+        /// <param name="fileName">Path where the file will be extracted.</param>
+        /// <param name="preserveTimestamp">Preserve the timestamp of the file.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
+        public ConfiguredTaskAwaitable ExtractAsync(string fileName, bool preserveTimestamp = true, CancellationToken token = default)
+            => Task.Factory.StartNew(
+                () => Extract(fileName, preserveTimestamp, token),
+                token,
+                TaskCreationOptions.LongRunning,
+                TaskScheduler.Default).ConfigureAwait(false);
+
+        /// <summary>
+        /// Extract this specific entry of the file. Use <seealso cref="ArchiveFile.Extract"/> instead if you want to extract the whole archive.<br/>
+        /// Extracting specific entry one-by-one might be slower for some formats, especially with Solid-block enabled archives.
+        /// </summary>
+        /// <param name="stream">Output stream where the data of the file will be written into.</param>
+        /// <param name="preserveTimestamp">Preserve the timestamp of the file.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
+        public void Extract(Stream stream, bool preserveTimestamp, CancellationToken token)
+            => _archive?.Extract([_index], 1, 0, new ArchiveStreamCallback(_index, stream, LastWriteTime, preserveTimestamp, token));
+
+        /// <summary>
+        /// Extract this specific entry of the file asynchronously. Use <seealso cref="ArchiveFile.ExtractAsync"/> instead if you want to extract the whole archive.<br/>
+        /// Extracting specific entry one-by-one might be slower for some formats, especially with Solid-block enabled archives.
+        /// </summary>
+        /// <param name="stream">Output stream where the data of the file will be written into.</param>
+        /// <param name="preserveTimestamp">Preserve the timestamp of the file.</param>
+        /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
+        public ConfiguredTaskAwaitable ExtractAsync(Stream stream, bool preserveTimestamp, CancellationToken token)
+            => Task.Factory.StartNew(
+                () => Extract(stream, preserveTimestamp, token),
+                token,
+                TaskCreationOptions.LongRunning,
+                TaskScheduler.Default).ConfigureAwait(false);
     }
 }
