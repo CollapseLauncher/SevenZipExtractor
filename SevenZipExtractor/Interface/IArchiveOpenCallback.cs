@@ -12,11 +12,11 @@ namespace SevenZipExtractor.Interface
         // ref ulong replaced with IntPtr because handlers ofter pass null value
         // read actual value with Marshal.ReadInt64
         void SetTotal(
-            ulong* files,
+            ulong* files, // [In] ref ulong files, can use 'ulong* files' but it is unsafe
             ulong* bytes); // [In] ref ulong bytes
 
         void SetCompleted(
-            ulong* files,
+            ulong* files, // [In] ref ulong files
             ulong* bytes); // [In] ref ulong bytes
     }
 }

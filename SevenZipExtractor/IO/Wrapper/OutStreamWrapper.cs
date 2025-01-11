@@ -1,4 +1,5 @@
 ﻿using SevenZipExtractor.Interface;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices.Marshalling;
@@ -8,9 +9,26 @@ using System.Threading;
 namespace SevenZipExtractor.IO.Wrapper
 {
     [GeneratedComClass]
-    internal partial class OutStreamWrapper(Stream baseStream, CancellationToken cancellationToken)
-        : StreamWrapper(baseStream), IOutStream
+    internal sealed unsafe partial class OutStreamWrapper : StreamWrapper, IOutStream
     {
+        private readonly bool     _preserveTimestamp;
+        private readonly DateTime _streamTimestamp;
+
+        internal OutStreamWrapper(Stream baseStream, DateTime streamTimestamp, bool preserveTimestamp, CancellationToken cancelToken) : base(baseStream, cancelToken)
+        {
+            _streamTimestamp = streamTimestamp;
+            _preserveTimestamp = preserveTimestamp;
+        }
+
+        public override void Dispose()
+        {
+            base.Dispose();
+            if (_preserveTimestamp && BaseStream is FileStream asFileStream)
+            {
+                File.SetLastWriteTime(asFileStream.Name, _streamTimestamp);
+            }
+        }
+
         public int SetSize(long newSize)
         {
             lock (BaseStream)
@@ -21,9 +39,9 @@ namespace SevenZipExtractor.IO.Wrapper
             return 0;
         }
 
-        public unsafe int Write(byte[] data, uint size, uint* processedSize)
+        public int Write(byte[] data, uint size, uint* processedSize)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            CancelToken.ThrowIfCancellationRequested();
 
             int sizeAsInt = (int)size;
 
@@ -35,7 +53,10 @@ namespace SevenZipExtractor.IO.Wrapper
             #endif
             }
 
-            *processedSize = size;
+            if (processedSize != null)
+            {
+                *processedSize = size;
+            }
             return 0;
         }
     }

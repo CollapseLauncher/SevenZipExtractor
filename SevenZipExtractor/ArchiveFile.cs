@@ -6,24 +6,26 @@ using SevenZipExtractor.IO.Callback;
 using SevenZipExtractor.IO.Wrapper;
 using SevenZipExtractor.Unmanaged;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.Marshalling;
 using System.Threading;
 using System.Threading.Tasks;
+// ReSharper disable ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+// ReSharper disable LoopCanBeConvertedToQuery
 
 namespace SevenZipExtractor
 {
     public sealed class ArchiveFile : IDisposable
     {
-        private const    int              DefaultOutBufferSize = 4 << 10;
-        private readonly IInArchive?      _archive;
-        private readonly InStreamWrapper  _archiveStream;
-        private          ulong            _lastSize;
-        private          Stopwatch        _extractProgressStopwatch = Stopwatch.StartNew();
+        private const    int             DefaultOutBufferSize = 4 << 10;
+        private readonly IInArchive?     _archive;
+        private readonly InStreamWrapper _archiveStream;
+        private          ulong           _lastSize;
+        private          Stopwatch       _extractProgressStopwatch = Stopwatch.StartNew();
 
         public event EventHandler<ExtractProgressProp>? ExtractProgress;
 
@@ -32,7 +34,8 @@ namespace SevenZipExtractor
 
         public ArchiveFile(string archiveFilePath) :
             this(File.Open(archiveFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
-        { }
+        {
+        }
 
         public ArchiveFile(Stream archiveStream, SevenZipFormat format = SevenZipFormat.Undefined)
         {
@@ -52,8 +55,8 @@ namespace SevenZipExtractor
             }
 
             _archive       = NativeMethods.CreateInArchive(FormatIdentity.GuidMapping[format]);
-            _archiveStream = new InStreamWrapper(archiveStream);
-            Entries        = GetEntriesInner();
+            _archiveStream = new InStreamWrapper(archiveStream, default);
+            Entries        = GetEntriesInner(_archive, _archiveStream);
             Count          = Entries.Select(x => x.IsFolder ? 0 : 1).Sum();
         }
 
@@ -69,38 +72,40 @@ namespace SevenZipExtractor
             => new(archiveStream, format);
 
         public void Extract(string outputFolder, bool overwrite = true, CancellationToken token = default)
-            => Extract(entry => GetEntryPathInner(entry, outputFolder), overwrite, DefaultOutBufferSize, token);
+            => Extract(entry => GetEntryPathInner(entry, outputFolder), overwrite, true, DefaultOutBufferSize, token);
 
         public void Extract(string outputFolder, bool overwrite, int outputBufferSize, CancellationToken token = default)
-            => Extract(entry => GetEntryPathInner(entry, outputFolder), overwrite, outputBufferSize, token);
+            => Extract(entry => GetEntryPathInner(entry, outputFolder), overwrite, true, outputBufferSize, token);
 
-        private string GetEntryPathInner(Entry entry, string outputFolder)
-            => Path.Combine(outputFolder, entry.FileName ?? string.Empty);
+        public void Extract(string outputFolder, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token = default)
+            => Extract(entry => GetEntryPathInner(entry, outputFolder), overwrite, preserveTimestamp, outputBufferSize, token);
 
         public void Extract(Func<Entry, string?> getOutputPath, CancellationToken token = default)
-            => Extract(getOutputPath, true, DefaultOutBufferSize, token);
+            => Extract(getOutputPath, true, true, DefaultOutBufferSize, token);
 
         public void Extract(Func<Entry, string?> getOutputPath, bool overwrite, CancellationToken token = default)
-            => Extract(getOutputPath, overwrite, DefaultOutBufferSize, token);
+            => Extract(getOutputPath, overwrite, true, DefaultOutBufferSize, token);
 
-        public void Extract(Func<Entry, string?> getOutputPath, bool overwrite, int outputBufferSize, CancellationToken token = default)
+        public void Extract(Func<Entry, string?> getOutputPath, bool overwrite, bool preserveTimestamp = true, CancellationToken token = default)
+            => Extract(getOutputPath, overwrite, preserveTimestamp, DefaultOutBufferSize, token);
+
+        public void Extract(Func<Entry, string?> getOutputPath, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token = default)
         {
             ArchiveStreamsCallback? streamCallback = null;
             outputBufferSize = Math.Max(DefaultOutBufferSize, outputBufferSize);
 
             try
             {
-                streamCallback              =  ArchiveStreamsCallback.Create(getOutputPath, Entries, overwrite, outputBufferSize, token);
+                streamCallback              =  ArchiveStreamsCallback.Create(getOutputPath, Entries, overwrite, preserveTimestamp, outputBufferSize, token);
                 streamCallback.ReadProgress += StreamCallback_ReadProperty;
 
+                _lastSize                 = 0;
                 _extractProgressStopwatch = Stopwatch.StartNew();
-                _archive?.Extract([], 0xFFFFFFFF, 0, streamCallback);
-                token.ThrowIfCancellationRequested();
+                _archive?.Extract(null, 0xFFFFFFFF, 0, streamCallback);
             }
             finally
             {
                 _extractProgressStopwatch.Stop();
-
                 if (streamCallback != null)
                 {
                     streamCallback.ReadProgress -= StreamCallback_ReadProperty;
@@ -109,81 +114,56 @@ namespace SevenZipExtractor
         }
 
         public Task ExtractAsync(string outputFolder, bool overwrite = true, CancellationToken token = default)
-            => ExtractAsync(entry => GetEntryPathInner(entry, outputFolder), overwrite, DefaultOutBufferSize, token);
+            => ExtractAsync(entry => GetEntryPathInner(entry, outputFolder), overwrite, true, DefaultOutBufferSize, token);
 
         public Task ExtractAsync(string outputFolder, bool overwrite, int outputBufferSize, CancellationToken token = default)
-            => ExtractAsync(entry => GetEntryPathInner(entry, outputFolder), overwrite, outputBufferSize, token);
+            => ExtractAsync(entry => GetEntryPathInner(entry, outputFolder), overwrite, true, outputBufferSize, token);
+
+        public Task ExtractAsync(string outputFolder, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token = default)
+            => ExtractAsync(entry => GetEntryPathInner(entry, outputFolder), overwrite, preserveTimestamp, outputBufferSize, token);
+
+        public Task ExtractAsync(Func<Entry, string?> getOutputPath, CancellationToken token = default)
+            => ExtractAsync(getOutputPath, true, true, DefaultOutBufferSize, token);
 
         public Task ExtractAsync(Func<Entry, string?> getOutputPath, bool overwrite, CancellationToken token = default)
-            => Task.Factory.StartNew(() => Extract(getOutputPath, overwrite, DefaultOutBufferSize, token), token);
+            => ExtractAsync(getOutputPath, overwrite, true, DefaultOutBufferSize, token);
 
         public Task ExtractAsync(Func<Entry, string?> getOutputPath, bool overwrite, int outputBufferSize, CancellationToken token = default)
-            => Task.Factory.StartNew(() => Extract(getOutputPath, overwrite, outputBufferSize, token), token);
+            => ExtractAsync(getOutputPath, overwrite, true, outputBufferSize, token);
 
-        private List<Entry> GetEntriesInner()
+        public Task ExtractAsync(Func<Entry, string?> getOutputPath, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token = default)
+            => Task.Factory.StartNew(
+                () => Extract(getOutputPath, overwrite, preserveTimestamp, outputBufferSize, token),
+                token,
+                TaskCreationOptions.LongRunning,
+                TaskScheduler.Default);
+
+        private static string GetEntryPathInner(Entry entry, string outputFolder)
+            => Path.Combine(outputFolder, entry.FileName ?? string.Empty);
+
+        private static List<Entry> GetEntriesInner(IInArchive? archive, IInStream archiveStream)
         {
-            List<Entry> entries = [];
-            const ulong checkPos = 32 * 1024;
-            int open = _archive?.Open(_archiveStream, checkPos, null) ?? 0;
-
-            if (open != 0)
+            if (archive == null)
             {
-                throw new InvalidOperationException("Unable to get entries from the archive stream");
+                throw new InvalidOperationException("Archive is not initialized");
             }
 
-            uint itemsCount = _archive?.GetNumberOfItems() ?? 0;
+            List<Entry> entries  = [];
+            const ulong checkPos = 32 * 1024;
+            int         hResult  = archive.Open(archiveStream, checkPos, null);
 
-            for (uint fileIndex = 0; fileIndex < itemsCount; fileIndex++)
+            if (hResult != 0)
             {
-                string? fileName = GetProperty<string>(fileIndex, ItemPropId.kpidPath);
-                bool isFolder = GetProperty<bool>(fileIndex, ItemPropId.kpidIsFolder);
-                bool isEncrypted = GetProperty<bool>(fileIndex, ItemPropId.kpidEncrypted);
-                ulong size = GetProperty<ulong>(fileIndex, ItemPropId.kpidSize);
-                ulong packedSize = GetProperty<ulong>(fileIndex, ItemPropId.kpidPackedSize);
-                DateTime creationTime = GetProperty<DateTime>(fileIndex, ItemPropId.kpidCreationTime);
-                DateTime lastWriteTime = GetProperty<DateTime>(fileIndex, ItemPropId.kpidLastWriteTime);
-                DateTime lastAccessTime = GetProperty<DateTime>(fileIndex, ItemPropId.kpidLastAccessTime);
-                uint crc = GetProperty<uint>(fileIndex, ItemPropId.kpidCRC);
-                uint attributes = GetProperty<uint>(fileIndex, ItemPropId.kpidAttributes);
-                string? comment = GetProperty<string>(fileIndex, ItemPropId.kpidComment);
-                string? hostOs = GetProperty<string>(fileIndex, ItemPropId.kpidHostOS);
-                string? method = GetProperty<string>(fileIndex, ItemPropId.kpidMethod);
+                Marshal.ThrowExceptionForHR(hResult);
+            }
 
-                bool isSplitBefore = GetProperty<bool>(fileIndex, ItemPropId.kpidSplitBefore);
-                bool isSplitAfter = GetProperty<bool>(fileIndex, ItemPropId.kpidSplitAfter);
-
-                entries.Add(new Entry(_archive, fileIndex)
-                {
-                    FileName = fileName,
-                    IsFolder = isFolder,
-                    IsEncrypted = isEncrypted,
-                    Size = size,
-                    PackedSize = packedSize,
-                    CreationTime = creationTime,
-                    LastWriteTime = lastWriteTime,
-                    LastAccessTime = lastAccessTime,
-                    Crc = crc,
-                    Attributes = attributes,
-                    Comment = comment,
-                    HostOs = hostOs,
-                    Method = method,
-                    IsSplitBefore = isSplitBefore,
-                    IsSplitAfter = isSplitAfter
-                });
+            uint itemsCount = archive.GetNumberOfItems();
+            for (uint index = 0; index < itemsCount; index++)
+            {
+                entries.Add(Entry.Create(archive, index));
             }
 
             return entries;
-        }
-        private T? GetProperty<T>(uint fileIndex, ItemPropId name)
-        {
-            ComVariant propVariant = ComVariant.Null;
-            _archive?.GetProperty(fileIndex, name, ref propVariant);
-
-            return propVariant.VarType switch
-                   {
-                       VarEnum.VT_FILETIME => (T)(object)DateTime.FromFileTime(propVariant.GetRawDataRef<long>()),
-                       _ => propVariant.As<T>()
-                   };
         }
 
         private ulong GetLastSize(ulong input)
@@ -202,18 +182,15 @@ namespace SevenZipExtractor
             => ExtractProgress?.Invoke(this, e);
 
         private void StreamCallback_ReadProperty(object? sender, FileProgressProperty e)
-            =>
-            UpdateProgress(new ExtractProgressProp(GetLastSize(e.StartRead),
+            => UpdateProgress(new ExtractProgressProp(GetLastSize(e.StartRead),
                                                    e.StartRead, e.EndRead,
                                                    _extractProgressStopwatch.Elapsed.TotalSeconds, e.Count,
                                                    Count));
 
-        
-
-        private int SearchMaxSignatureLength()
+        private static int SearchMaxSignatureLength()
             => FormatIdentity.Signatures.Values.Select(GetSignatureLength).Prepend(0).Max();
 
-        private int GetSignatureLength(FormatProperties format)
+        private static int GetSignatureLength(FormatProperties format)
         {
             int len = 0;
             if (format.SignatureOffsets != null)
@@ -225,7 +202,7 @@ namespace SevenZipExtractor
             return len;
         }
 
-        private bool GuessFormatFromSignature(Stream stream, out SevenZipFormat format)
+        private static bool GuessFormatFromSignature(Stream stream, out SevenZipFormat format)
         {
             int maxLenSignature = SearchMaxSignatureLength();
             format = SevenZipFormat.Undefined;
@@ -240,44 +217,50 @@ namespace SevenZipExtractor
                 maxLenSignature = (int)stream.Length;
             }
 
-            Span<byte> archiveFileSignature = new byte[maxLenSignature];
-            int        bytesRead            = stream.ReadAtLeast(archiveFileSignature, maxLenSignature, false);
-
-            stream.Position -= bytesRead;
-
-            if (bytesRead != maxLenSignature)
+            byte[] archiveFileSignature = ArrayPool<byte>.Shared.Rent(maxLenSignature);
+            try
             {
+                int bytesRead = stream.ReadAtLeast(archiveFileSignature.AsSpan(0, maxLenSignature), maxLenSignature, false);
+                stream.Position -= bytesRead;
+
+                if (bytesRead != maxLenSignature)
+                {
+                    return false;
+                }
+
+                foreach (KeyValuePair<SevenZipFormat, FormatProperties> pair in FormatIdentity.Signatures)
+                {
+                    int[] offsets = pair.Value.SignatureOffsets;
+                    foreach (int offset in offsets)
+                    {
+                        if (maxLenSignature < offset + pair.Value.SignatureData.Length)
+                        {
+                            continue;
+                        }
+
+                        if (!archiveFileSignature.AsSpan(offset, pair.Value.SignatureData.Length)
+                                                 .SequenceEqual(pair.Value.SignatureData))
+                        {
+                            continue;
+                        }
+
+                        format = pair.Key;
+                        return true;
+                    }
+                }
+
+                format = SevenZipFormat.Undefined;
                 return false;
             }
-
-            foreach (KeyValuePair<SevenZipFormat, FormatProperties> pair in FormatIdentity.Signatures)
+            finally
             {
-                int[] offsets = pair.Value.SignatureOffsets;
-                foreach (int offset in offsets)
-                {
-                    if (maxLenSignature < offset + pair.Value.SignatureData.Length)
-                    {
-                        continue;
-                    }
-
-                    if (!archiveFileSignature.Slice(offset, pair.Value.SignatureData.Length)
-                                             .SequenceEqual(pair.Value.SignatureData))
-                    {
-                        continue;
-                    }
-
-                    format = pair.Key;
-                    return true;
-                }
+                ArrayPool<byte>.Shared.Return(archiveFileSignature);
             }
-
-            format = SevenZipFormat.Undefined;
-            return false;
         }
 
         public void Dispose()
         {
-            _archiveStream?.Dispose();
+            _archiveStream.Dispose();
             _archive?.Close();
 
             GC.SuppressFinalize(this);

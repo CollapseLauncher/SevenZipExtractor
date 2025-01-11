@@ -9,7 +9,7 @@ namespace SevenZipExtractor.Interface
     [Guid("23170F69-40C1-278A-0000-000600600000")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     [GeneratedComInterface]
-    internal partial interface IInArchive
+    internal unsafe partial interface IInArchive
     {
         [PreserveSig]
         int Open(
@@ -21,23 +21,23 @@ namespace SevenZipExtractor.Interface
         uint GetNumberOfItems();
 
         void GetProperty(
-            uint           index,
-            ItemPropId     propID, // PROPID
-            ref ComVariant value); // PROPVARIANT
+            uint        index,
+            ItemPropId  propID, // PROPID
+            ComVariant* value); // PROPVARIANT
 
         // indices must be sorted 
         // numItems = 0xFFFFFFFF means all files
         // testMode != 0 means "test files operation"
         [PreserveSig]
         int Extract(
-            [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] uint[] indices, //[In] ref uint indices,
-            uint                                                          numItems,
-            int                                                           testMode,
-            [MarshalAs(UnmanagedType.Interface)] IArchiveExtractCallback  extractCallback);
+            [In, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] uint[]? indices, //[In] ref uint indices,
+            uint                                                               numItems,
+            int                                                                testMode,
+            [MarshalAs(UnmanagedType.Interface)] IArchiveExtractCallback       extractCallback);
 
         void GetArchiveProperty(
-            uint           propID, // PROPID
-            ref ComVariant value); // COMVARIANT
+            uint        propID, // PROPID
+            ComVariant* value); // COMVARIANT
 
         uint GetNumberOfProperties();
 

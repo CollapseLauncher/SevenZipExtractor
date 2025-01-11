@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace SevenZipExtractor.Format
+﻿namespace SevenZipExtractor.Format
 {
     internal struct FormatProperties
     {

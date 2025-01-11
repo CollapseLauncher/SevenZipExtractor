@@ -1,33 +1,31 @@
 using System;
 using System.IO;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-// ReSharper disable PartialTypeWithSinglePart
-// ReSharper disable IdentifierTypo
-// ReSharper disable InconsistentNaming
+using System.Threading;
 
 namespace SevenZipExtractor.IO.Wrapper
 {
-    internal class StreamWrapper : IDisposable
+    internal unsafe class StreamWrapper : IDisposable
     {
-        protected Stream BaseStream;
+        protected Stream            BaseStream;
+        protected CancellationToken CancelToken;
 
-        protected StreamWrapper(Stream baseStream)
+        protected StreamWrapper(Stream baseStream, CancellationToken cancelToken)
         {
-            BaseStream = baseStream;
+            BaseStream  = baseStream;
+            CancelToken = cancelToken;
         }
 
         ~StreamWrapper() => Dispose();
 
-        public void Dispose()
+        public virtual void Dispose()
         {
             BaseStream.Dispose();
             GC.SuppressFinalize(this);
         }
 
-        public virtual unsafe void Seek(long offset, SeekOrigin seekOrigin, long* newPosition)
+        public virtual void Seek(long offset, SeekOrigin seekOrigin, ulong* newPosition)
         {
-            long pos = BaseStream.Seek(offset, seekOrigin);
+            ulong pos = (ulong)BaseStream.Seek(offset, seekOrigin);
             if (newPosition != null)
             {
                 *newPosition = pos;

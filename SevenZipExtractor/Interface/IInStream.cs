@@ -9,11 +9,11 @@ namespace SevenZipExtractor.Interface
     [Guid("23170F69-40C1-278A-0000-000300030000")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     [GeneratedComInterface]
-    internal partial interface IInStream : ISequentialInStream
+    internal unsafe partial interface IInStream : ISequentialInStream
     {
-        unsafe void Seek(
+        void Seek(
             long       offset,
             SeekOrigin seekOrigin,
-            long*      newPosition);
+            ulong*     newPosition);
     }
 }

@@ -12,9 +12,7 @@ using System.Threading;
 namespace SevenZipExtractor.IO.Callback
 {
     [GeneratedComClass]
-    internal sealed partial class ArchiveStreamsCallback(
-        List<Func<Stream>> streams,
-        CancellationToken  cancellationToken)
+    internal sealed unsafe partial class ArchiveStreamsCallback(List<Func<Stream>?> streams, DateTime[] streamTimestamps, bool preserveTimestamp, CancellationToken cancellationToken)
         : IArchiveExtractCallback
     {
         private FileProgressProperty _progressProperty = new()
@@ -29,8 +27,6 @@ namespace SevenZipExtractor.IO.Callback
             Name = string.Empty
         };
 
-        private Stream? _currentStream;
-
         public event EventHandler<FileProgressProperty>? ReadProgress;
         public event EventHandler<FileStatusProperty>?   ReadStatus;
 
@@ -44,38 +40,49 @@ namespace SevenZipExtractor.IO.Callback
             ReadStatus?.Invoke(this, e);
         }
 
-        public static ArchiveStreamsCallback Create(Func<Entry, string?> getOutputPath, List<Entry> entries, bool overwrite, int outputBufferSize, CancellationToken token)
+        public static ArchiveStreamsCallback Create(Func<Entry, string?> getOutputPath, List<Entry> entries, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token)
         {
             FileStreamOptions fileStreamOptions = new()
             {
-                Mode       = overwrite ? FileMode.Create : FileMode.Open,
+                Mode       = FileMode.Create,
                 Access     = FileAccess.Write,
-                Share      = FileShare.Write,
-                BufferSize = outputBufferSize
+                Share      = FileShare.ReadWrite,
+                BufferSize = 1 << 20
             };
 
-            List<Func<Stream>> outStreamDelegates = [];
-            foreach (Entry entry in entries)
+            List<Func<Stream>?> outStreamDelegates  = [];
+            DateTime[]          outStreamTimestamps = GC.AllocateUninitializedArray<DateTime>(entries.Count);
+
+            for (int i = 0; i < entries.Count; i++)
             {
+                Entry entry = entries[i];
+
                 string? outputPath = getOutputPath(entry);
 
                 if (string.IsNullOrEmpty(outputPath) ||
                     string.IsNullOrWhiteSpace(outputPath))
                 {
+                    outStreamDelegates.Add(null);
                     continue;
                 }
 
                 if (entry.IsFolder)
                 {
                     Directory.CreateDirectory(outputPath);
+                    outStreamDelegates.Add(null);
                     continue;
                 }
 
                 // Always unassign read-only attribute from file
                 FileInfo fileInfo = new FileInfo(outputPath);
-                if (fileInfo.Exists)
+                switch (fileInfo.Exists)
                 {
-                    fileInfo.IsReadOnly = false;
+                    case true when !overwrite:
+                        outStreamDelegates.Add(null);
+                        continue;
+                    case true:
+                        fileInfo.IsReadOnly = false;
+                        break;
                 }
 
                 if (!(fileInfo.Directory?.Exists ?? true))
@@ -84,9 +91,10 @@ namespace SevenZipExtractor.IO.Callback
                 }
 
                 outStreamDelegates.Add(() => fileInfo.Open(fileStreamOptions));
+                outStreamTimestamps[i] = entry.LastWriteTime;
             }
 
-            return new ArchiveStreamsCallback(outStreamDelegates, token);
+            return new ArchiveStreamsCallback(outStreamDelegates, outStreamTimestamps, preserveTimestamp, token);
         }
 
         public void SetTotal(ulong total)
@@ -95,9 +103,9 @@ namespace SevenZipExtractor.IO.Callback
             UpdateProgress(_progressProperty);
         }
 
-        public void SetCompleted(in ulong completeValue)
+        public void SetCompleted(ulong* completeValue)
         {
-            _progressProperty.StartRead = completeValue;
+            _progressProperty.StartRead = *completeValue;
             UpdateProgress(_progressProperty);
         }
 
@@ -115,20 +123,22 @@ namespace SevenZipExtractor.IO.Callback
                 return 0;
             }
 
-            Func<Stream> streamFunc = streams[(int)index];
+            Func<Stream>? streamFunc    = streams[(int)index];
+            Stream?       currentStream = streamFunc?.Invoke();
 
-            if (streamFunc == null)
+            if (streamFunc == null || currentStream == null)
             {
                 outStream = null;
                 return 0;
             }
 
-            _currentStream          = streamFunc();
+            DateTime dateTime = streamTimestamps[(int)index];
+
             _progressProperty.Count = 0;
-            _statusProperty.Name    = _currentStream is FileStream asFs ? asFs.Name : "";
+            _statusProperty.Name    = currentStream is FileStream asFs ? asFs.Name : "";
             UpdateStatus(_statusProperty);
 
-            outStream = new OutStreamWrapper(_currentStream, cancellationToken);
+            outStream = new OutStreamWrapper(currentStream, dateTime, preserveTimestamp, cancellationToken);
             return 0;
         }
 
@@ -138,7 +148,6 @@ namespace SevenZipExtractor.IO.Callback
 
         public void SetOperationResult(OperationResult resultEOperationResult)
         {
-            _currentStream?.Dispose();
         }
     }
 }

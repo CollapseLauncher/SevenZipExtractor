@@ -1,5 +1,4 @@
-﻿using System;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 // ReSharper disable PartialTypeWithSinglePart
 
@@ -14,6 +13,6 @@ namespace SevenZipExtractor.Interface
         int Write(
             [In, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] byte[] data,
             uint                                                              size,
-            uint*                                                             processedSize);
+            uint*                                                             processedSize); // ref uint processedSize
     }
 }

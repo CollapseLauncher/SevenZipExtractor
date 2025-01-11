@@ -5,8 +5,8 @@
 		<Product>SevenZipWrapper</Product>
 		<PublishTrimmed>false</PublishTrimmed>
 		<Description>C# wrapper for 7z.dll (included)</Description>
-		<Copyright>Copyright 2022-2024</Copyright>
-		<Version>1.0.16</Version>
+		<Copyright>Copyright 2022-2025</Copyright>
+		<Version>1.1.0</Version>
 		<Authors>Eugene Sichkar, Alexander Selishchev, @matortheeternal, Hajin Jang, Artem Tarasov, Jose Pineiro, Raphael Stoeckli, Wojciech Nagórski. Modified by neon-nyan</Authors>
 		<PackageId>SevenZipExtractor</PackageId>
 		<PackageProjectUrl>https://github.com/CollapseLauncher/SevenZipExtractor</PackageProjectUrl>
@@ -28,10 +28,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<None Remove="SevenZipExtractor.targets" />
-	</ItemGroup>
-
-	<ItemGroup>
 	  <Content Include="Lib\7z.dll">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </Content>
@@ -40,9 +36,5 @@
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">
 		<Optimize>True</Optimize>
 		<DebugType>portable</DebugType>
-		<TieredPGO>true</TieredPGO>
-		<TieredCompilation>true</TieredCompilation>
-		<TieredCompilationQuickJit>false</TieredCompilationQuickJit>
-		<TieredCompilationQuickJitForLoops>false</TieredCompilationQuickJitForLoops>
 	</PropertyGroup>
 </Project>

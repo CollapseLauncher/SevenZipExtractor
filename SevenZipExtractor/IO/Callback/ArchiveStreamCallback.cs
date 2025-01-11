@@ -1,6 +1,7 @@
 ﻿using SevenZipExtractor.Enum;
 using SevenZipExtractor.Interface;
 using SevenZipExtractor.IO.Wrapper;
+using System;
 using System.IO;
 using System.Runtime.InteropServices.Marshalling;
 using System.Threading;
@@ -9,17 +10,14 @@ using System.Threading;
 namespace SevenZipExtractor.IO.Callback
 {
     [GeneratedComClass]
-    internal sealed partial class ArchiveStreamCallback(
-        uint              fileNumber,
-        Stream            stream,
-        CancellationToken cancellationToken)
+    internal sealed unsafe partial class ArchiveStreamCallback(uint fileNumber, Stream stream, DateTime streamTimestamp, bool preserveTimestamp, CancellationToken cancellationToken)
         : IArchiveExtractCallback
     {
         public void SetTotal(ulong total)
         {
         }
 
-        public void SetCompleted(in ulong completeValue)
+        public void SetCompleted(ulong* completeValue)
         {
         }
 
@@ -31,7 +29,7 @@ namespace SevenZipExtractor.IO.Callback
                 return 0;
             }
 
-            outStream = new OutStreamWrapper(stream, cancellationToken);
+            outStream = new OutStreamWrapper(stream, streamTimestamp, preserveTimestamp, cancellationToken);
             return 0;
         }
 
