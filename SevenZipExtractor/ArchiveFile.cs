@@ -32,6 +32,8 @@ namespace SevenZipExtractor
         private          ulong           _lastSize;
         private          Stopwatch       _extractProgressStopwatch = Stopwatch.StartNew();
 
+        internal         string?         ArchivePassword;
+
         /// <summary>
         /// Occurs when the extraction progress changes.
         /// </summary>
@@ -80,11 +82,18 @@ namespace SevenZipExtractor
 
             _archive       = NativeMethods.CreateInArchive(FormatIdentity.GuidMapping[format]);
             _archiveStream = new InStreamWrapper(archiveStream, default);
-            Entries        = GetEntriesInner(_archive, _archiveStream);
+            Entries        = GetEntriesInner(_archive, _archiveStream, this);
             Count          = Entries.Select(x => x.IsFolder ? 0 : 1).Sum();
         }
 
         ~ArchiveFile() => Dispose();
+
+        /// <summary>
+        /// Set the password to be used to extract the archive.<br/>
+        /// Set it to <c>null</c> or <see cref="string.Empty"/> to reset the password.
+        /// </summary>
+        public void SetArchivePassword(string? password)
+            => ArchivePassword = password;
 
         /// <summary>
         /// Creates an instance of <see cref="ArchiveFile"/> from the specified archive file path.
@@ -104,7 +113,7 @@ namespace SevenZipExtractor
             => new(archiveStream, format);
 
         /// <summary>
-        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder.
+        /// Extract all contents inside the <see cref="ArchiveFile"/> to the specified output folder.
         /// </summary>
         /// <param name="outputFolder">The folder where the files will be extracted.</param>
         /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
@@ -113,7 +122,7 @@ namespace SevenZipExtractor
             => Extract(entry => GetEntryPathInner(entry, outputFolder), overwrite, true, DefaultOutBufferSize, token);
 
         /// <summary>
-        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder.
+        /// Extract all contents inside the <see cref="ArchiveFile"/> to the specified output folder.
         /// </summary>
         /// <param name="outputFolder">The folder where the files will be extracted.</param>
         /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
@@ -123,7 +132,7 @@ namespace SevenZipExtractor
             => Extract(entry => GetEntryPathInner(entry, outputFolder), overwrite, true, outputBufferSize, token);
 
         /// <summary>
-        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder.
+        /// Extract all contents inside the <see cref="ArchiveFile"/> to the specified output folder.
         /// </summary>
         /// <param name="outputFolder">The folder where the files will be extracted.</param>
         /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
@@ -134,7 +143,7 @@ namespace SevenZipExtractor
             => Extract(entry => GetEntryPathInner(entry, outputFolder), overwrite, preserveTimestamp, outputBufferSize, token);
 
         /// <summary>
-        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder.
+        /// Extract all contents inside the <see cref="ArchiveFile"/> to the specified output folder.
         /// </summary>
         /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
@@ -142,7 +151,7 @@ namespace SevenZipExtractor
             => Extract(getOutputPath, true, true, DefaultOutBufferSize, token);
 
         /// <summary>
-        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder.
+        /// Extract all contents inside the <see cref="ArchiveFile"/> to the specified output folder.
         /// </summary>
         /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
         /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
@@ -151,7 +160,7 @@ namespace SevenZipExtractor
             => Extract(getOutputPath, overwrite, true, DefaultOutBufferSize, token);
 
         /// <summary>
-        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder.
+        /// Extract all contents inside the <see cref="ArchiveFile"/> to the specified output folder.
         /// </summary>
         /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
         /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
@@ -161,7 +170,7 @@ namespace SevenZipExtractor
             => Extract(getOutputPath, overwrite, preserveTimestamp, DefaultOutBufferSize, token);
 
         /// <summary>
-        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder.
+        /// Extract all contents inside the <see cref="ArchiveFile"/> to the specified output folder.
         /// </summary>
         /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
         /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
@@ -177,6 +186,7 @@ namespace SevenZipExtractor
             {
                 streamCallback = ArchiveStreamsCallback.Create(getOutputPath, Entries, overwrite, preserveTimestamp, outputBufferSize, token);
                 streamCallback.ReadProgress += StreamCallback_ReadProperty;
+                streamCallback.SetArchivePassword(ArchivePassword);
 
                 _lastSize                 = 0;
                 _extractProgressStopwatch = Stopwatch.StartNew();
@@ -193,7 +203,7 @@ namespace SevenZipExtractor
         }
 
         /// <summary>
-        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
+        /// Extract all contents inside the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
         /// </summary>
         /// <param name="outputFolder">The folder where the files will be extracted.</param>
         /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
@@ -203,7 +213,7 @@ namespace SevenZipExtractor
             => ExtractAsync(entry => GetEntryPathInner(entry, outputFolder), overwrite, true, DefaultOutBufferSize, token);
 
         /// <summary>
-        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
+        /// Extract all contents inside the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
         /// </summary>
         /// <param name="outputFolder">The folder where the files will be extracted.</param>
         /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
@@ -214,7 +224,7 @@ namespace SevenZipExtractor
             => ExtractAsync(entry => GetEntryPathInner(entry, outputFolder), overwrite, true, outputBufferSize, token);
 
         /// <summary>
-        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
+        /// Extract all contents inside the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
         /// </summary>
         /// <param name="outputFolder">The folder where the files will be extracted.</param>
         /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
@@ -226,7 +236,7 @@ namespace SevenZipExtractor
             => ExtractAsync(entry => GetEntryPathInner(entry, outputFolder), overwrite, preserveTimestamp, outputBufferSize, token);
 
         /// <summary>
-        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
+        /// Extract all contents inside the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
         /// </summary>
         /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
@@ -235,7 +245,7 @@ namespace SevenZipExtractor
             => ExtractAsync(getOutputPath, true, true, DefaultOutBufferSize, token);
 
         /// <summary>
-        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
+        /// Extract all contents inside the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
         /// </summary>
         /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
         /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
@@ -245,7 +255,7 @@ namespace SevenZipExtractor
             => ExtractAsync(getOutputPath, overwrite, true, DefaultOutBufferSize, token);
 
         /// <summary>
-        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
+        /// Extract all contents inside the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
         /// </summary>
         /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
         /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
@@ -256,7 +266,7 @@ namespace SevenZipExtractor
             => ExtractAsync(getOutputPath, overwrite, true, outputBufferSize, token);
 
         /// <summary>
-        /// Extract all contents inside of the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
+        /// Extract all contents inside the <see cref="ArchiveFile"/> to the specified output folder asynchronously.
         /// </summary>
         /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
         /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
@@ -274,7 +284,7 @@ namespace SevenZipExtractor
         private static string GetEntryPathInner(Entry entry, string outputFolder)
             => Path.Combine(outputFolder, entry.FileName ?? string.Empty);
 
-        private static List<Entry> GetEntriesInner(IInArchive? archive, IInStream archiveStream)
+        private static List<Entry> GetEntriesInner(IInArchive? archive, IInStream archiveStream, ArchiveFile parent)
         {
             if (archive == null)
             {
@@ -293,7 +303,7 @@ namespace SevenZipExtractor
             uint itemsCount = archive.GetNumberOfItems();
             for (uint index = 0; index < itemsCount; index++)
             {
-                entries.Add(Entry.Create(archive, index));
+                entries.Add(Entry.Create(archive, index, parent));
             }
 
             return entries;

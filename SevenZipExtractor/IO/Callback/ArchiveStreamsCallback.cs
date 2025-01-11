@@ -1,5 +1,4 @@
 ﻿using SevenZipExtractor.Enum;
-using SevenZipExtractor.Event;
 using SevenZipExtractor.Interface;
 using SevenZipExtractor.IO.Wrapper;
 using System;
@@ -12,34 +11,13 @@ using System.Threading;
 namespace SevenZipExtractor.IO.Callback
 {
     [GeneratedComClass]
-    internal sealed unsafe partial class ArchiveStreamsCallback(List<Func<Stream>?> streams, DateTime[] streamTimestamps, bool preserveTimestamp, CancellationToken cancellationToken)
-        : IArchiveExtractCallback
+    internal sealed partial class ArchiveStreamsCallback(
+        List<Func<Stream>?> streams,
+        DateTime[]          streamTimestamps,
+        bool                preserveTimestamp,
+        CancellationToken   cancellationToken
+        ) : StreamCallbackBase
     {
-        private FileProgressProperty _progressProperty = new()
-        {
-            Count     = 0,
-            StartRead = 0,
-            EndRead   = 0
-        };
-
-        private FileStatusProperty _statusProperty = new()
-        {
-            Name = string.Empty
-        };
-
-        public event EventHandler<FileProgressProperty>? ReadProgress;
-        public event EventHandler<FileStatusProperty>?   ReadStatus;
-
-        private void UpdateProgress(FileProgressProperty e)
-        {
-            ReadProgress?.Invoke(this, e);
-        }
-
-        private void UpdateStatus(FileStatusProperty e)
-        {
-            ReadStatus?.Invoke(this, e);
-        }
-
         public static ArchiveStreamsCallback Create(Func<Entry, string?> getOutputPath, List<Entry> entries, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token)
         {
             FileStreamOptions fileStreamOptions = new()
@@ -97,19 +75,7 @@ namespace SevenZipExtractor.IO.Callback
             return new ArchiveStreamsCallback(outStreamDelegates, outStreamTimestamps, preserveTimestamp, token);
         }
 
-        public void SetTotal(ulong total)
-        {
-            _progressProperty.EndRead = total;
-            UpdateProgress(_progressProperty);
-        }
-
-        public void SetCompleted(ulong* completeValue)
-        {
-            _progressProperty.StartRead = *completeValue;
-            UpdateProgress(_progressProperty);
-        }
-
-        public int GetStream(uint index, out ISequentialOutStream? outStream, AskMode askExtractMode)
+        public override int GetStream(uint index, out ISequentialOutStream? outStream, AskMode askExtractMode)
         {
             if (askExtractMode != AskMode.kExtract)
             {
@@ -134,20 +100,12 @@ namespace SevenZipExtractor.IO.Callback
 
             DateTime dateTime = streamTimestamps[(int)index];
 
-            _progressProperty.Count = 0;
-            _statusProperty.Name    = currentStream is FileStream asFs ? asFs.Name : "";
-            UpdateStatus(_statusProperty);
+            ProgressProperty.Count = 0;
+            StatusProperty.Name    = currentStream is FileStream asFs ? asFs.Name : "";
+            UpdateStatus(StatusProperty);
 
             outStream = new OutStreamWrapper(currentStream, dateTime, preserveTimestamp, cancellationToken);
             return 0;
-        }
-
-        public void PrepareOperation(AskMode askExtractMode)
-        {
-        }
-
-        public void SetOperationResult(OperationResult resultEOperationResult)
-        {
         }
     }
 }

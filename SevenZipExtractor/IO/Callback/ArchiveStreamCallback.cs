@@ -10,18 +10,15 @@ using System.Threading;
 namespace SevenZipExtractor.IO.Callback
 {
     [GeneratedComClass]
-    internal sealed unsafe partial class ArchiveStreamCallback(uint fileNumber, Stream stream, DateTime streamTimestamp, bool preserveTimestamp, CancellationToken cancellationToken)
-        : IArchiveExtractCallback
+    internal partial class ArchiveStreamCallback(
+        uint              fileNumber,
+        Stream            stream,
+        DateTime          streamTimestamp,
+        bool              preserveTimestamp,
+        CancellationToken cancellationToken
+        ) : StreamCallbackBase
     {
-        public void SetTotal(ulong total)
-        {
-        }
-
-        public void SetCompleted(ulong* completeValue)
-        {
-        }
-
-        public int GetStream(uint index, out ISequentialOutStream? outStream, AskMode askExtractMode)
+        public override int GetStream(uint index, out ISequentialOutStream? outStream, AskMode askExtractMode)
         {
             if (index != fileNumber || askExtractMode != AskMode.kExtract)
             {
@@ -31,14 +28,6 @@ namespace SevenZipExtractor.IO.Callback
 
             outStream = new OutStreamWrapper(stream, streamTimestamp, preserveTimestamp, cancellationToken);
             return 0;
-        }
-
-        public void PrepareOperation(AskMode askExtractMode)
-        {
-        }
-
-        public void SetOperationResult(OperationResult resultEOperationResult)
-        {
         }
     }
 }

@@ -15,11 +15,13 @@ namespace SevenZipExtractor
     {
         private readonly IInArchive? _archive;
         private readonly uint        _index;
+        private readonly ArchiveFile _parent;
 
-        internal Entry(IInArchive? archive, uint index)
+        internal Entry(IInArchive? archive, uint index, ArchiveFile parent)
         {
             _archive = archive;
-            _index = index;
+            _index   = index;
+            _parent  = parent;
         }
 
         /// <summary>
@@ -99,9 +101,9 @@ namespace SevenZipExtractor
         /// </summary>
         public bool IsSolid { get; set; }
 
-        internal static Entry Create(IInArchive archive, uint index)
+        internal static Entry Create(IInArchive archive, uint index, ArchiveFile parent)
         {
-            Entry entry = new Entry(archive, index)
+            Entry entry = new Entry(archive, index, parent)
             {
                 IsFolder       = GetUnmanagedProperty<bool>(archive, index, ItemPropId.kpidIsFolder),
                 IsEncrypted    = GetUnmanagedProperty<bool>(archive, index, ItemPropId.kpidEncrypted),
@@ -191,7 +193,11 @@ namespace SevenZipExtractor
         /// <param name="preserveTimestamp">Preserve the timestamp of the file.</param>
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
         public void Extract(Stream stream, bool preserveTimestamp, CancellationToken token)
-            => _archive?.Extract([_index], 1, 0, new ArchiveStreamCallback(_index, stream, LastWriteTime, preserveTimestamp, token));
+        {
+            ArchiveStreamCallback callback = new ArchiveStreamCallback(_index, stream, LastWriteTime, preserveTimestamp, token);
+            callback.SetArchivePassword(_parent.ArchivePassword);
+            _archive?.Extract([_index], 1, 0, callback);
+        }
 
         /// <summary>
         /// Extract this specific entry of the file asynchronously. Use <seealso cref="ArchiveFile.ExtractAsync"/> instead if you want to extract the whole archive.<br/>
