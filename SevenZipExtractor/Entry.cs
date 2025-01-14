@@ -168,7 +168,7 @@ namespace SevenZipExtractor
             }
 
             using FileStream fileStream = File.Create(fileName);
-            Extract(fileStream, preserveTimestamp, token);
+            Extract(fileStream, preserveTimestamp, true, token);
         }
 
         /// <summary>
@@ -190,13 +190,21 @@ namespace SevenZipExtractor
         /// Extracting specific entry one-by-one might be slower for some formats, especially with Solid-block enabled archives.
         /// </summary>
         /// <param name="stream">Output stream where the data of the file will be written into.</param>
+        /// <param name="isDispose">Dispose the stream after extraction is completed.</param>
         /// <param name="preserveTimestamp">Preserve the timestamp of the file.</param>
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
-        public void Extract(Stream stream, bool preserveTimestamp, CancellationToken token)
+        public void Extract(Stream stream, bool preserveTimestamp, bool isDispose = true, CancellationToken token = default)
         {
-            ArchiveStreamCallback callback = new ArchiveStreamCallback(_index, stream, LastWriteTime, preserveTimestamp, token);
-            callback.SetArchivePassword(_parent.ArchivePassword);
-            _archive?.Extract([_index], 1, 0, callback);
+            using (ArchiveStreamCallback callback = new ArchiveStreamCallback(_index, stream, isDispose, token))
+            {
+                callback.SetArchivePassword(_parent.ArchivePassword);
+                _archive?.Extract([_index], 1, 0, callback);
+            }
+
+            if (stream is FileStream fileStream)
+            {
+                File.SetLastWriteTime(fileStream.Name, LastWriteTime);
+            }
         }
 
         /// <summary>
@@ -204,11 +212,12 @@ namespace SevenZipExtractor
         /// Extracting specific entry one-by-one might be slower for some formats, especially with Solid-block enabled archives.
         /// </summary>
         /// <param name="stream">Output stream where the data of the file will be written into.</param>
+        /// <param name="isDispose">Dispose the stream after extraction is completed.</param>
         /// <param name="preserveTimestamp">Preserve the timestamp of the file.</param>
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
-        public ConfiguredTaskAwaitable ExtractAsync(Stream stream, bool preserveTimestamp, CancellationToken token)
+        public ConfiguredTaskAwaitable ExtractAsync(Stream stream, bool preserveTimestamp, bool isDispose = true, CancellationToken token = default)
             => Task.Factory.StartNew(
-                () => Extract(stream, preserveTimestamp, token),
+                () => Extract(stream, preserveTimestamp, isDispose, token),
                 token,
                 TaskCreationOptions.LongRunning,
                 TaskScheduler.Default).ConfigureAwait(false);

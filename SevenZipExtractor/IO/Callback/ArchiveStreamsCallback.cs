@@ -2,11 +2,13 @@
 using SevenZipExtractor.Interface;
 using SevenZipExtractor.IO.Wrapper;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices.Marshalling;
 using System.Threading;
 // ReSharper disable PartialTypeWithSinglePart
+// ReSharper disable CommentTypo
 
 namespace SevenZipExtractor.IO.Callback
 {
@@ -16,8 +18,12 @@ namespace SevenZipExtractor.IO.Callback
         DateTime[]          streamTimestamps,
         bool                preserveTimestamp,
         CancellationToken   cancellationToken
-        ) : StreamCallbackBase
+        ) : StreamCallbackBase, IDisposable
     {
+        private readonly ConcurrentQueue<Tuple<DateTime, Stream>> _obtainedStream = new();
+
+        ~ArchiveStreamsCallback() => Dispose();
+
         public static ArchiveStreamsCallback Create(Func<Entry, string?> getOutputPath, List<Entry> entries, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token)
         {
             FileStreamOptions fileStreamOptions = new()
@@ -104,8 +110,31 @@ namespace SevenZipExtractor.IO.Callback
             StatusProperty.Name    = currentStream is FileStream asFs ? asFs.Name : "";
             UpdateStatus(StatusProperty);
 
-            outStream = new OutStreamWrapper(currentStream, dateTime, preserveTimestamp, cancellationToken);
+            _obtainedStream.Enqueue(new Tuple<DateTime, Stream>(dateTime, currentStream));
+            // Set disposeStream to "false" to avoid unmanaged Free() routine, causing the deconstructor to be called
+            // and triggering unwanted disposal of the output stream. Disposing will be handled by
+            // this class's Dispose() method instead.
+            outStream = new OutStreamWrapper(currentStream, cancellationToken);
             return 0;
+        }
+
+        public void Dispose()
+        {
+            while (_obtainedStream.TryDequeue(out Tuple<DateTime, Stream>? stream))
+            {
+                stream.Item2.Dispose();
+
+                if (stream.Item2 is not FileStream asFileStream)
+                {
+                    continue;
+                }
+
+                if (preserveTimestamp)
+                {
+                    File.SetLastWriteTime(asFileStream.Name, stream.Item1);
+                }
+            }
+            GC.SuppressFinalize(this);
         }
     }
 }

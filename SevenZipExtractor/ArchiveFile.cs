@@ -28,7 +28,8 @@ namespace SevenZipExtractor
         private const    int             DefaultOutBufferSize = 4 << 10;
 
         private readonly IInArchive?     _archive;
-        private readonly InStreamWrapper _archiveStream;
+        private readonly Stream          _archiveStream;
+        private readonly bool            _disposeArchiveStream;
         private          ulong           _lastSize;
         private          Stopwatch       _extractProgressStopwatch = Stopwatch.StartNew();
 
@@ -54,7 +55,7 @@ namespace SevenZipExtractor
         /// </summary>
         /// <param name="archiveFilePath">The path to the archive file.</param>
         public ArchiveFile(string archiveFilePath) :
-            this(File.Open(archiveFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            this(File.Open(archiveFilePath, FileMode.Open, FileAccess.Read, FileShare.Read), true)
         {
         }
 
@@ -63,7 +64,18 @@ namespace SevenZipExtractor
         /// </summary>
         /// <param name="archiveStream">The stream of the archive file.</param>
         /// <param name="format">The format of the archive file. Default is <see cref="SevenZipFormat.Undefined"/> for automatic detection.</param>
-        public ArchiveFile(Stream archiveStream, SevenZipFormat format = SevenZipFormat.Undefined)
+        public ArchiveFile(Stream archiveStream, SevenZipFormat format = SevenZipFormat.Undefined) :
+            this(archiveStream, true, format)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ArchiveFile"/> class from the specified archive stream and format.
+        /// </summary>
+        /// <param name="archiveStream">The stream of the archive file.</param>
+        /// <param name="disposeStream">Dispose the archive stream after being used.</param>
+        /// <param name="format">The format of the archive file. Default is <see cref="SevenZipFormat.Undefined"/> for automatic detection.</param>
+        public ArchiveFile(Stream archiveStream, bool disposeStream, SevenZipFormat format = SevenZipFormat.Undefined)
         {
             ArgumentNullException.ThrowIfNull(archiveStream, nameof(archiveStream));
 
@@ -80,10 +92,13 @@ namespace SevenZipExtractor
                 }
             }
 
-            _archive       = NativeMethods.CreateInArchive(FormatIdentity.GuidMapping[format]);
-            _archiveStream = new InStreamWrapper(archiveStream, default);
-            Entries        = GetEntriesInner(_archive, _archiveStream, this);
-            Count          = Entries.Select(x => x.IsFolder ? 0 : 1).Sum();
+            _archiveStream = archiveStream;
+            InStreamWrapper streamWrapper = new InStreamWrapper(_archiveStream, default);
+
+            _archive              = NativeMethods.CreateInArchive(FormatIdentity.GuidMapping[format]);
+            _disposeArchiveStream = disposeStream;
+            Entries               = GetEntriesInner(_archive, streamWrapper, this);
+            Count                 = Entries.Select(x => x.IsFolder ? 0 : 1).Sum();
         }
 
         ~ArchiveFile() => Dispose();
@@ -110,7 +125,17 @@ namespace SevenZipExtractor
         /// <param name="format">The format of the archive file. Default is <see cref="SevenZipFormat.Undefined"/> for automatic detection.</param>
         /// <returns>A new instance of <see cref="ArchiveFile"/>.</returns>
         public static ArchiveFile Create(Stream archiveStream, SevenZipFormat format = SevenZipFormat.Undefined)
-            => new(archiveStream, format);
+            => new(archiveStream, true, format);
+
+        /// <summary>
+        /// Creates an instance of <see cref="ArchiveFile"/> from the specified archive stream and format.
+        /// </summary>
+        /// <param name="archiveStream">The stream of the archive file.</param>
+        /// <param name="disposeStream">Dispose the archive stream after being used.</param>
+        /// <param name="format">The format of the archive file. Default is <see cref="SevenZipFormat.Undefined"/> for automatic detection.</param>
+        /// <returns>A new instance of <see cref="ArchiveFile"/>.</returns>
+        public static ArchiveFile Create(Stream archiveStream, bool disposeStream, SevenZipFormat format = SevenZipFormat.Undefined)
+            => new(archiveStream, disposeStream, format);
 
         /// <summary>
         /// Extract all contents inside the <see cref="ArchiveFile"/> to the specified output folder.
@@ -198,6 +223,7 @@ namespace SevenZipExtractor
                 if (streamCallback != null)
                 {
                     streamCallback.ReadProgress -= StreamCallback_ReadProperty;
+                    streamCallback.Dispose();
                 }
             }
         }
@@ -406,8 +432,11 @@ namespace SevenZipExtractor
         /// </summary>
         public void Dispose()
         {
-            _archiveStream.Dispose();
             _archive?.Close();
+            if (_disposeArchiveStream)
+            {
+                _archiveStream.Dispose();
+            }
 
             GC.SuppressFinalize(this);
         }

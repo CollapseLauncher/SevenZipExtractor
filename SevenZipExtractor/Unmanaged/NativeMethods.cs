@@ -131,10 +131,10 @@ namespace SevenZipExtractor.Unmanaged
             }
         }
 
-        internal static IInArchive? CreateInArchive(Guid classId)
+        internal static IInArchive? CreateInArchive(Guid formatClassId)
         {
             Guid interfaceId = typeof(IInArchive).GUID;
-            CreateObjectDelegate(ref classId, ref interfaceId, out IInArchive? result);
+            CreateObjectDelegate(ref formatClassId, ref interfaceId, out IInArchive? result);
             return result;
         }
 

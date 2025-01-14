@@ -13,10 +13,9 @@ namespace SevenZipExtractor.IO.Callback
     internal partial class ArchiveStreamCallback(
         uint              fileNumber,
         Stream            stream,
-        DateTime          streamTimestamp,
-        bool              preserveTimestamp,
+        bool              disposeStream,
         CancellationToken cancellationToken
-        ) : StreamCallbackBase
+        ) : StreamCallbackBase, IDisposable
     {
         public override int GetStream(uint index, out ISequentialOutStream? outStream, AskMode askExtractMode)
         {
@@ -26,8 +25,17 @@ namespace SevenZipExtractor.IO.Callback
                 return 0;
             }
 
-            outStream = new OutStreamWrapper(stream, streamTimestamp, preserveTimestamp, cancellationToken);
+            outStream = new OutStreamWrapper(stream, cancellationToken);
             return 0;
+        }
+
+        public void Dispose()
+        {
+            if (disposeStream)
+            {
+                stream.Dispose();
+            }
+            GC.SuppressFinalize(this);
         }
     }
 }
