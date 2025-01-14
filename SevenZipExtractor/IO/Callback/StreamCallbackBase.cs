@@ -2,12 +2,14 @@
 using SevenZipExtractor.Event;
 using SevenZipExtractor.Interface;
 using System;
+using System.Runtime.InteropServices.Marshalling;
+// ReSharper disable PartialTypeWithSinglePart
 
 namespace SevenZipExtractor.IO.Callback
 {
-    internal abstract unsafe class StreamCallbackBase : IArchiveExtractCallback, ICryptoGetTextPassword
+    [GeneratedComClass]
+    internal abstract unsafe partial class StreamCallbackBase : IArchiveExtractCallback, ICryptoGetTextPassword
     {
-        [CLSCompliant(false)]
         protected string? ArchivePassword;
         protected FileProgressProperty ProgressProperty = new()
         {
@@ -52,7 +54,6 @@ namespace SevenZipExtractor.IO.Callback
         {
         }
 
-        [CLSCompliant(false)]
         internal void SetArchivePassword(string? password)
             => ArchivePassword = password;
 
