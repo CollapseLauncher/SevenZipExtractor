@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using System.Threading;
 using System.Threading.Tasks;
+// ReSharper disable InvalidXmlDocComment
 
 namespace SevenZipExtractor
 {
@@ -130,7 +131,7 @@ namespace SevenZipExtractor
             where T : unmanaged
         {
             ComVariant propVariant = ComVariant.Null;
-            archive?.GetProperty(fileIndex, name, &propVariant);
+            archive.GetProperty(fileIndex, name, &propVariant);
             return propVariant.GetRawDataRef<T>();
         }
 
