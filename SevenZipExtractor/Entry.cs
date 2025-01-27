@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 // ReSharper disable InvalidXmlDocComment
 // ReSharper disable UnusedMember.Global
+// ReSharper disable UnusedAutoPropertyAccessor.Global
 
 namespace SevenZipExtractor
 {
