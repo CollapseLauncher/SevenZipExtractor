@@ -362,11 +362,7 @@ namespace SevenZipExtractor
         private static int GetSignatureLength(FormatProperties format)
         {
             int len = 0;
-            if (format.SignatureOffsets != null)
-            {
-                len += format.SignatureOffsets.Max();
-            }
-
+            len += format.SignatureOffsets.Max();
             len += format.SignatureData.Length;
             return len;
         }

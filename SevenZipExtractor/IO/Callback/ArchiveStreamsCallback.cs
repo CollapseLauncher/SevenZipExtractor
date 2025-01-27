@@ -89,12 +89,6 @@ namespace SevenZipExtractor.IO.Callback
                 return 0;
             }
 
-            if (streams == null)
-            {
-                outStream = null;
-                return 0;
-            }
-
             Func<Stream>? streamFunc    = streams[(int)index];
             Stream?       currentStream = streamFunc?.Invoke();
 
