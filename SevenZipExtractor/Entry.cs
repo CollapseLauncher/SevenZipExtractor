@@ -9,6 +9,7 @@ using System.Runtime.InteropServices.Marshalling;
 using System.Threading;
 using System.Threading.Tasks;
 // ReSharper disable InvalidXmlDocComment
+// ReSharper disable UnusedMember.Global
 
 namespace SevenZipExtractor
 {
@@ -38,7 +39,7 @@ namespace SevenZipExtractor
         /// </summary>
         public ulong Size { get; internal set; }
         /// <summary>
-        /// Entry size in a archived state
+        /// Entry size in an archived state
         /// </summary>
         public ulong PackedSize { get; internal set; }
 
@@ -104,7 +105,7 @@ namespace SevenZipExtractor
 
         internal static Entry Create(IInArchive archive, uint index, ArchiveFile parent)
         {
-            Entry entry = new Entry(archive, index, parent)
+            Entry entry = new(archive, index, parent)
             {
                 IsFolder       = GetUnmanagedProperty<bool>(archive, index, ItemPropId.kpidIsFolder),
                 IsEncrypted    = GetUnmanagedProperty<bool>(archive, index, ItemPropId.kpidEncrypted),
@@ -196,7 +197,7 @@ namespace SevenZipExtractor
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
         public void Extract(Stream stream, bool preserveTimestamp, bool isDispose = true, CancellationToken token = default)
         {
-            using (ArchiveStreamCallback callback = new ArchiveStreamCallback(_index, stream, isDispose, token))
+            using (ArchiveStreamCallback callback = new(_index, stream, isDispose, token))
             {
                 callback.SetArchivePassword(_parent.ArchivePassword);
                 _archive?.Extract([_index], 1, 0, callback);

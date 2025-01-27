@@ -58,7 +58,7 @@ namespace SevenZipExtractor.IO.Callback
                 }
 
                 // Always unassign read-only attribute from file
-                FileInfo fileInfo = new FileInfo(outputPath);
+                FileInfo fileInfo = new(outputPath);
                 switch (fileInfo.Exists)
                 {
                     case true when !overwrite:

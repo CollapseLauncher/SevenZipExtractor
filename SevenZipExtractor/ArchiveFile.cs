@@ -93,7 +93,7 @@ namespace SevenZipExtractor
             }
 
             _archiveStream = archiveStream;
-            InStreamWrapper streamWrapper = new InStreamWrapper(_archiveStream, default);
+            InStreamWrapper streamWrapper = new(_archiveStream, default);
 
             _archive              = NativeMethods.CreateInArchive(FormatIdentity.GuidMapping[format]);
             _disposeArchiveStream = disposeStream;
