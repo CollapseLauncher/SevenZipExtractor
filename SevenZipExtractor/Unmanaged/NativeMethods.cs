@@ -99,8 +99,10 @@ namespace SevenZipExtractor.Unmanaged
             return pResult;
         }
 
-        private static unsafe void CreateObjectDelegate(ref Guid        classID, ref Guid interfaceID,
-                                                        out IInArchive? outObject)
+        private static unsafe void CreateObjectDelegate<T>(ref Guid classID,
+                                                           ref Guid interfaceID,
+                                                           out T?   outObject)
+            where T : class
         {
             bool invokeSucceeded = default;
             Unsafe.SkipInit(out outObject);
@@ -120,20 +122,20 @@ namespace SevenZipExtractor.Unmanaged
                 }
 
                 invokeSucceeded = true;
-                outObject       = ComInterfaceMarshaller<IInArchive>.ConvertToManaged(outObjectNative);
+                outObject       = ComInterfaceMarshaller<T>.ConvertToManaged(outObjectNative);
             }
             finally
             {
                 if (invokeSucceeded)
                 {
-                    ComInterfaceMarshaller<IInArchive>.Free(outObjectNative);
+                    ComInterfaceMarshaller<T>.Free(outObjectNative);
                 }
             }
         }
 
-        internal static IInArchive? CreateInArchive(Guid formatClassId)
+        internal static IInArchive? CreateInArchiveClassId(Guid formatClassId)
         {
-            Guid interfaceId = typeof(IInArchive).GUID;
+            Guid interfaceId = Constants.IID_IInArchive_Guid;
             CreateObjectDelegate(ref formatClassId, ref interfaceId, out IInArchive? result);
             return result;
         }

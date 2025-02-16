@@ -4,7 +4,7 @@ using System.Runtime.InteropServices.Marshalling;
 
 namespace SevenZipExtractor.Interface
 {
-    [Guid("23170F69-40C1-278A-0000-000300010000")]
+    [Guid(Constants.IID_ISequentialInStream)]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     [GeneratedComInterface]
     internal partial interface ISequentialInStream
