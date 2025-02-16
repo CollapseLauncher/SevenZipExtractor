@@ -95,7 +95,7 @@ namespace SevenZipExtractor
             _archiveStream = archiveStream;
             InStreamWrapper streamWrapper = new(_archiveStream, default);
 
-            _archive              = NativeMethods.CreateInArchive(FormatIdentity.GuidMapping[format]);
+            _archive              = NativeMethods.CreateInArchiveClassId(FormatIdentity.GuidMapping[format]);
             _disposeArchiveStream = disposeStream;
             Entries               = GetEntriesInner(_archive, streamWrapper, this);
             Count                 = Entries.Select(x => x.IsFolder ? 0 : 1).Sum();
