@@ -1,5 +1,5 @@
-﻿using System.Runtime.InteropServices.Marshalling;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 // ReSharper disable PartialTypeWithSinglePart
 
 namespace SevenZipExtractor.Interface
