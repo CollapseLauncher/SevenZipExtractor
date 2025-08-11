@@ -1,10 +1,11 @@
-﻿namespace SevenZipExtractor.Enum
+﻿// ReSharper disable UnusedMember.Global
+namespace SevenZipExtractor.Enum
 {
     internal enum OperationResult
     {
-        kOK = 0,
-        kUnSupportedMethod,
-        kDataError,
-        kCRCError
+        Ok = 0,
+        UnsupportedMethod,
+        DataError,
+        ChecksumError
     }
 }

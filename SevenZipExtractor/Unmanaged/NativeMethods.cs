@@ -1,23 +1,31 @@
 using SevenZipExtractor.Interface;
 using System;
+#if !NET9_0_OR_GREATER
 using System.Diagnostics;
+#endif
 using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
+// ReSharper disable StringLiteralTypo
 
 namespace SevenZipExtractor.Unmanaged
 {
     internal static partial class NativeMethods
     {
-        private const           string SevenZipMainDllName  = "7z.dll";
-        private const           string SevenZipMainDllPath  = "Lib\\" + SevenZipMainDllName;
-        private const           string SevenZipMiniDllName  = "7za.dll";
-        private const           string SevenZipMiniDllPath  = "Lib\\" + SevenZipMiniDllName;
-        private const           string SevenZipEMiniDllName = "7zxa.dll";
-        private const           string SevenZipEMiniDllPath = "Lib\\" + SevenZipEMiniDllName;
-        private static readonly string CurrentProcessPath   = Process.GetCurrentProcess().MainModule!.FileName;
+        private const string SevenZipMainDllName  = "7z.dll";
+        private const string SevenZipMainDllPath  = "Lib\\" + SevenZipMainDllName;
+        private const string SevenZipMiniDllName  = "7za.dll";
+        private const string SevenZipMiniDllPath  = "Lib\\" + SevenZipMiniDllName;
+        private const string SevenZipEMiniDllName = "7zxa.dll";
+        private const string SevenZipEMiniDllPath = "Lib\\" + SevenZipEMiniDllName;
+
+#if NET9_0_OR_GREATER
+        private static readonly string CurrentProcessPath = Environment.ProcessPath ?? "";
+#else
+        private static readonly string CurrentProcessPath = Process.GetCurrentProcess().MainModule!.FileName;
+#endif
 
         static NativeMethods()
         {
@@ -104,9 +112,9 @@ namespace SevenZipExtractor.Unmanaged
                                                            out T?   outObject)
             where T : class
         {
-            bool invokeSucceeded = default;
+            bool invokeSucceeded = false;
             Unsafe.SkipInit(out outObject);
-            void* outObjectNative = default;
+            void* outObjectNative = null;
             try
             {
                 fixed (Guid* interfaceIDNative = &interfaceID)

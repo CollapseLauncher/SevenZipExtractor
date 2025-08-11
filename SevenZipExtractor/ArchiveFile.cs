@@ -11,12 +11,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 // ReSharper disable ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
 // ReSharper disable LoopCanBeConvertedToQuery
+// ReSharper disable UnusedMember.Global
 
 namespace SevenZipExtractor
 {
@@ -93,7 +93,7 @@ namespace SevenZipExtractor
             }
 
             _archiveStream = archiveStream;
-            InStreamWrapper streamWrapper = new(_archiveStream, default);
+            InStreamWrapper streamWrapper = new(_archiveStream, CancellationToken.None);
 
             _archive              = NativeMethods.CreateInArchiveClassId(FormatIdentity.GuidMapping[format]);
             _disposeArchiveStream = disposeStream;
@@ -235,7 +235,7 @@ namespace SevenZipExtractor
         /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
         /// <returns>A task that represents the asynchronous extraction operation.</returns>
-        public ConfiguredTaskAwaitable ExtractAsync(string outputFolder, bool overwrite = true, CancellationToken token = default)
+        public Task ExtractAsync(string outputFolder, bool overwrite = true, CancellationToken token = default)
             => ExtractAsync(entry => GetEntryPathInner(entry, outputFolder), overwrite, true, DefaultOutBufferSize, token);
 
         /// <summary>
@@ -246,7 +246,7 @@ namespace SevenZipExtractor
         /// <param name="outputBufferSize">The size of the output buffer.</param>
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
         /// <returns>A task that represents the asynchronous extraction operation.</returns>
-        public ConfiguredTaskAwaitable ExtractAsync(string outputFolder, bool overwrite, int outputBufferSize, CancellationToken token = default)
+        public Task ExtractAsync(string outputFolder, bool overwrite, int outputBufferSize, CancellationToken token = default)
             => ExtractAsync(entry => GetEntryPathInner(entry, outputFolder), overwrite, true, outputBufferSize, token);
 
         /// <summary>
@@ -258,7 +258,7 @@ namespace SevenZipExtractor
         /// <param name="outputBufferSize">The size of the output buffer.</param>
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
         /// <returns>A task that represents the asynchronous extraction operation.</returns>
-        public ConfiguredTaskAwaitable ExtractAsync(string outputFolder, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token = default)
+        public Task ExtractAsync(string outputFolder, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token = default)
             => ExtractAsync(entry => GetEntryPathInner(entry, outputFolder), overwrite, preserveTimestamp, outputBufferSize, token);
 
         /// <summary>
@@ -267,7 +267,7 @@ namespace SevenZipExtractor
         /// <param name="getOutputPath">Delegates to set the output of the given file to be extracted.</param>
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
         /// <returns>A task that represents the asynchronous extraction operation.</returns>
-        public ConfiguredTaskAwaitable ExtractAsync(Func<Entry, string?> getOutputPath, CancellationToken token = default)
+        public Task ExtractAsync(Func<Entry, string?> getOutputPath, CancellationToken token = default)
             => ExtractAsync(getOutputPath, true, true, DefaultOutBufferSize, token);
 
         /// <summary>
@@ -277,7 +277,7 @@ namespace SevenZipExtractor
         /// <param name="overwrite">Indicates whether to overwrite existing files.</param>
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
         /// <returns>A task that represents the asynchronous extraction operation.</returns>
-        public ConfiguredTaskAwaitable ExtractAsync(Func<Entry, string?> getOutputPath, bool overwrite, CancellationToken token = default)
+        public Task ExtractAsync(Func<Entry, string?> getOutputPath, bool overwrite, CancellationToken token = default)
             => ExtractAsync(getOutputPath, overwrite, true, DefaultOutBufferSize, token);
 
         /// <summary>
@@ -288,7 +288,7 @@ namespace SevenZipExtractor
         /// <param name="outputBufferSize">The size of the output buffer.</param>
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
         /// <returns>A task that represents the asynchronous extraction operation.</returns>
-        public ConfiguredTaskAwaitable ExtractAsync(Func<Entry, string?> getOutputPath, bool overwrite, int outputBufferSize, CancellationToken token = default)
+        public Task ExtractAsync(Func<Entry, string?> getOutputPath, bool overwrite, int outputBufferSize, CancellationToken token = default)
             => ExtractAsync(getOutputPath, overwrite, true, outputBufferSize, token);
 
         /// <summary>
@@ -300,12 +300,12 @@ namespace SevenZipExtractor
         /// <param name="outputBufferSize">The size of the output buffer.</param>
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
         /// <returns>A task that represents the asynchronous extraction operation.</returns>
-        public ConfiguredTaskAwaitable ExtractAsync(Func<Entry, string?> getOutputPath, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token = default)
+        public Task ExtractAsync(Func<Entry, string?> getOutputPath, bool overwrite, bool preserveTimestamp, int outputBufferSize, CancellationToken token = default)
             => Task.Factory.StartNew(
                 () => Extract(getOutputPath, overwrite, preserveTimestamp, outputBufferSize, token),
                 token,
                 TaskCreationOptions.LongRunning,
-                TaskScheduler.Default).ConfigureAwait(false);
+                TaskScheduler.Default);
 
         private static string GetEntryPathInner(Entry entry, string outputFolder)
             => Path.Combine(outputFolder, entry.FileName ?? string.Empty);
@@ -317,7 +317,7 @@ namespace SevenZipExtractor
                 throw new InvalidOperationException("Archive is not initialized");
             }
 
-            List<Entry> entries  = new();
+            List<Entry> entries  = [];
             const ulong checkPos = 32 * 1024;
             int         hResult  = archive.Open(archiveStream, checkPos, null);
 

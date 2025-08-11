@@ -19,7 +19,7 @@ namespace SevenZipExtractor.IO.Callback
     {
         public override int GetStream(uint index, out ISequentialOutStream? outStream, AskMode askExtractMode)
         {
-            if (index != fileNumber || askExtractMode != AskMode.kExtract)
+            if (index != fileNumber || askExtractMode != AskMode.Extract)
             {
                 outStream = null;
                 return 0;

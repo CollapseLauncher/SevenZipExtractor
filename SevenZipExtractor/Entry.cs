@@ -108,22 +108,22 @@ namespace SevenZipExtractor
         {
             Entry entry = new(archive, index, parent)
             {
-                IsFolder       = GetUnmanagedProperty<bool>(archive, index, ItemPropId.kpidIsFolder),
-                IsEncrypted    = GetUnmanagedProperty<bool>(archive, index, ItemPropId.kpidEncrypted),
-                Size           = GetUnmanagedProperty<ulong>(archive, index, ItemPropId.kpidSize),
-                PackedSize     = GetUnmanagedProperty<ulong>(archive, index, ItemPropId.kpidPackedSize),
-                Crc            = GetUnmanagedProperty<uint>(archive, index, ItemPropId.kpidCRC),
-                Attributes     = GetUnmanagedProperty<uint>(archive, index, ItemPropId.kpidAttributes),
-                IsSplitBefore  = GetUnmanagedProperty<bool>(archive, index, ItemPropId.kpidSplitBefore),
-                IsSplitAfter   = GetUnmanagedProperty<bool>(archive, index, ItemPropId.kpidSplitAfter),
-                IsSolid        = GetUnmanagedProperty<bool>(archive, index, ItemPropId.kpidSolid),
-                CreationTime   = GetProperty<DateTime>(archive, index, ItemPropId.kpidCreationTime),
-                LastWriteTime  = GetProperty<DateTime>(archive, index, ItemPropId.kpidLastWriteTime),
-                LastAccessTime = GetProperty<DateTime>(archive, index, ItemPropId.kpidLastAccessTime),
-                FileName       = GetProperty<string>(archive, index, ItemPropId.kpidPath),
-                Comment        = GetProperty<string>(archive, index, ItemPropId.kpidComment),
-                HostOs         = GetProperty<string>(archive, index, ItemPropId.kpidHostOS),
-                Method         = GetProperty<string>(archive, index, ItemPropId.kpidMethod)
+                IsFolder       = GetUnmanagedProperty<bool>(archive, index, ItemPropId.IsFolder),
+                IsEncrypted    = GetUnmanagedProperty<bool>(archive, index, ItemPropId.Encrypted),
+                Size           = GetUnmanagedProperty<ulong>(archive, index, ItemPropId.Size),
+                PackedSize     = GetUnmanagedProperty<ulong>(archive, index, ItemPropId.PackedSize),
+                Crc            = GetUnmanagedProperty<uint>(archive, index, ItemPropId.CRC),
+                Attributes     = GetUnmanagedProperty<uint>(archive, index, ItemPropId.Attributes),
+                IsSplitBefore  = GetUnmanagedProperty<bool>(archive, index, ItemPropId.SplitBefore),
+                IsSplitAfter   = GetUnmanagedProperty<bool>(archive, index, ItemPropId.SplitAfter),
+                IsSolid        = GetUnmanagedProperty<bool>(archive, index, ItemPropId.Solid),
+                CreationTime   = GetProperty<DateTime>(archive, index, ItemPropId.CreationTime),
+                LastWriteTime  = GetProperty<DateTime>(archive, index, ItemPropId.LastWriteTime),
+                LastAccessTime = GetProperty<DateTime>(archive, index, ItemPropId.LastAccessTime),
+                FileName       = GetProperty<string>(archive, index, ItemPropId.Path),
+                Comment        = GetProperty<string>(archive, index, ItemPropId.Comment),
+                HostOs         = GetProperty<string>(archive, index, ItemPropId.HostOS),
+                Method         = GetProperty<string>(archive, index, ItemPropId.Method)
             };
 
             return entry;
