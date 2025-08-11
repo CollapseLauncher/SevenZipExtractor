@@ -8,7 +8,7 @@ using System.Runtime.InteropServices.Marshalling;
 namespace SevenZipExtractor.IO.Callback
 {
     [GeneratedComClass]
-    internal abstract unsafe partial class StreamCallbackBase : IArchiveExtractCallback, ICryptoGetTextPassword
+    internal abstract partial class StreamCallbackBase : IArchiveExtractCallback, ICryptoGetTextPassword
     {
         protected string? ArchivePassword;
         protected FileProgressProperty ProgressProperty = new()
@@ -38,13 +38,13 @@ namespace SevenZipExtractor.IO.Callback
             UpdateProgress(ProgressProperty);
         }
 
-        public virtual void SetCompleted(ulong* completeValue)
+        public virtual unsafe void SetCompleted(ulong* completeValue)
         {
             ProgressProperty.StartRead = *completeValue;
             UpdateProgress(ProgressProperty);
         }
 
-        public abstract int GetStream(uint index, out ISequentialOutStream? outStream, AskMode askExtractMode);
+        public abstract void GetStream(uint index, out ISequentialOutStream? outStream, AskMode askExtractMode);
 
         public virtual void PrepareOperation(AskMode askExtractMode)
         {

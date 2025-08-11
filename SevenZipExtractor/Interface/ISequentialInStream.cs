@@ -9,8 +9,12 @@ namespace SevenZipExtractor.Interface
     [GeneratedComInterface]
     internal partial interface ISequentialInStream
     {
-        uint Read(
-            [Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] byte[] data,
-            uint                                                               size);
+        // 2025-08-12: Actually, the int must be an uint.
+        //             But due to hot-path casting and small buffer sizes, we use int here
+        //             and basically the value will never be overflowed.
+        unsafe void Read(
+            void* data,
+            int   size,
+            int*  processedSize);
     }
 }

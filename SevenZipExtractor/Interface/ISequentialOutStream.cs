@@ -7,12 +7,12 @@ namespace SevenZipExtractor.Interface
     [Guid(Constants.IID_ISequentialOutStream)]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     [GeneratedComInterface]
-    internal unsafe partial interface ISequentialOutStream
+    internal partial interface ISequentialOutStream
     {
-        [PreserveSig]
-        int Write(
-            [In, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] byte[] data,
-            uint                                                              size,
-            uint*                                                             processedSize); // ref uint processedSize
+        // 2025-08-12: Same reasoning as in ISequentialInStream.
+        unsafe void Write(
+            void* data,
+            int   size,
+            int*  processedSize);
     }
 }

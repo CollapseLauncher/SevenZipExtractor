@@ -10,6 +10,7 @@ namespace SevenZipExtractor
         internal const           string IID_IInArchive      = "23170F69-40C1-278A-0000-000600600000";
         internal static readonly Guid   IID_IInArchive_Guid = IID_IInArchive.ParseAsGuid();
 
+        internal const string IID_IProgress               = "23170F69-40C1-278A-0000-000000050000";
         internal const string IID_IArchiveOpenCallback    = "23170F69-40C1-278A-0000-000600100000";
         internal const string IID_IArchiveExtractCallback = "23170F69-40C1-278A-0000-000600200000";
         internal const string IID_ICryptoGetTextPassword  = "23170F69-40C1-278A-0000-000500100000";

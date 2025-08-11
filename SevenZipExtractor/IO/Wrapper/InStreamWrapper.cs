@@ -1,4 +1,5 @@
 ﻿using SevenZipExtractor.Interface;
+using System;
 using System.IO;
 using System.Runtime.InteropServices.Marshalling;
 using System.Threading;
@@ -13,10 +14,15 @@ namespace SevenZipExtractor.IO.Wrapper
         {
         }
 
-        public uint Read(byte[] data, uint size)
+        public unsafe void Read(void* data, int size, int* processedSize)
         {
             CancelToken.ThrowIfCancellationRequested();
-            return (uint)BaseStream.Read(data, 0, (int)size);
+            int read = BaseStream.Read(new Span<byte>(data, size));
+
+            if (processedSize != null)
+            {
+                *processedSize = read;
+            }
         }
     }
 }

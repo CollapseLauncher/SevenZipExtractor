@@ -13,9 +13,8 @@ namespace SevenZipExtractor.Interface
         void Seek(
             long       offset,
             SeekOrigin seekOrigin,
-            ulong*     newPosition);
+            long*      newPosition);
 
-        [PreserveSig]
-        int SetSize(long newSize);
+        void SetSize(long newSize);
     }
 }

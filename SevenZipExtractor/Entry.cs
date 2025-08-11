@@ -129,18 +129,16 @@ namespace SevenZipExtractor
             return entry;
         }
 
-        private static unsafe T GetUnmanagedProperty<T>(IInArchive archive, uint fileIndex, ItemPropId name)
+        private static T GetUnmanagedProperty<T>(IInArchive archive, uint fileIndex, ItemPropId name)
             where T : unmanaged
         {
-            ComVariant propVariant = ComVariant.Null;
-            archive.GetProperty(fileIndex, name, &propVariant);
+            archive.GetProperty(fileIndex, name, out ComVariant propVariant);
             return propVariant.GetRawDataRef<T>();
         }
 
-        private static unsafe T? GetProperty<T>(IInArchive archive, uint fileIndex, ItemPropId name)
+        private static T? GetProperty<T>(IInArchive archive, uint fileIndex, ItemPropId name)
         {
-            ComVariant propVariant = ComVariant.Null;
-            archive.GetProperty(fileIndex, name, &propVariant);
+            archive.GetProperty(fileIndex, name, out ComVariant propVariant);
 
             return propVariant.VarType switch
                    {
@@ -201,7 +199,7 @@ namespace SevenZipExtractor
             using (ArchiveStreamCallback callback = new(_index, stream, isDispose, token))
             {
                 callback.SetArchivePassword(_parent.ArchivePassword);
-                _archive?.Extract([_index], 1, 0, callback);
+                _archive?.Extract(in _index, 1, 0, callback);
             }
 
             if (stream is FileStream fileStream)

@@ -9,50 +9,48 @@ namespace SevenZipExtractor.Interface
     [Guid(Constants.IID_IInArchive)]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     [GeneratedComInterface]
-    internal unsafe partial interface IInArchive
+    internal partial interface IInArchive
     {
-        [PreserveSig]
-        int Open(
+        void Open(
             IInStream                                                  stream,
             in                                   ulong                 maxCheckStartPosition,
             [MarshalAs(UnmanagedType.Interface)] IArchiveOpenCallback? openArchiveCallback);
 
         void Close();
-        uint GetNumberOfItems();
+        void GetNumberOfItems(out uint count);
 
         void GetProperty(
-            uint        index,
-            ItemPropId  propID, // PROPID
-            ComVariant* value); // PROPVARIANT
+            uint           index,
+            ItemPropId     propID,
+            out ComVariant value);
 
         // indices must be sorted 
         // numItems = 0xFFFFFFFF means all files
         // testMode != 0 means "test files operation"
-        [PreserveSig]
-        int Extract(
-            [In, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] uint[]? indices, //[In] ref uint indices,
-            uint                                                               numItems,
-            int                                                                testMode,
-            [MarshalAs(UnmanagedType.Interface)] IArchiveExtractCallback       extractCallback);
+        void Extract(
+            in uint                                                      indices,
+            uint                                                         numItems,
+            int                                                          testMode,
+            [MarshalAs(UnmanagedType.Interface)] IArchiveExtractCallback extractCallback);
 
         void GetArchiveProperty(
-            uint        propID, // PROPID
-            ComVariant* value); // COMVARIANT
+            ItemPropId     propID,
+            out ComVariant value);
 
         uint GetNumberOfProperties();
 
         void GetPropertyInfo(
             uint                                           index,
             [MarshalAs(UnmanagedType.BStr)] out string     name,
-            out                                 ItemPropId propID, // PROPID
-            out                                 ushort     varType); //VARTYPE
+            out                                 ItemPropId propID,
+            out                                 ushort     varType);
 
         uint GetNumberOfArchiveProperties();
 
         void GetArchivePropertyInfo(
-            uint                                   index,
-            [MarshalAs(UnmanagedType.BStr)] string name,
-            ref                             uint   propID, // PROPID
-            ref                             ushort varType); //VARTYPE
+            uint                                       index,
+            [MarshalAs(UnmanagedType.BStr)] string     name,
+            out                             ItemPropId propID,
+            out                             ushort     varType);
     }
 }

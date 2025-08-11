@@ -11,7 +11,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 // ReSharper disable ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
@@ -215,7 +214,7 @@ namespace SevenZipExtractor
 
                 _lastSize                 = 0;
                 _extractProgressStopwatch = Stopwatch.StartNew();
-                _archive?.Extract(null, 0xFFFFFFFF, 0, streamCallback);
+                _archive?.Extract(0, 0xFFFFFFFF, 0, streamCallback);
             }
             finally
             {
@@ -319,14 +318,9 @@ namespace SevenZipExtractor
 
             List<Entry> entries  = [];
             const ulong checkPos = 32 * 1024;
-            int         hResult  = archive.Open(archiveStream, checkPos, null);
+            archive.Open(archiveStream, checkPos, null);
 
-            if (hResult != 0)
-            {
-                Marshal.ThrowExceptionForHR(hResult);
-            }
-
-            uint itemsCount = archive.GetNumberOfItems();
+            archive.GetNumberOfItems(out uint itemsCount);
             for (uint index = 0; index < itemsCount; index++)
             {
                 entries.Add(Entry.Create(archive, index, parent));
