@@ -40,10 +40,10 @@ namespace SevenZipExtractor.Interface
         uint GetNumberOfProperties();
 
         void GetPropertyInfo(
-            uint                                           index,
-            [MarshalAs(UnmanagedType.BStr)] out string     name,
-            out                                 ItemPropId propID,
-            out                                 ushort     varType);
+            uint                                       index,
+            [MarshalAs(UnmanagedType.BStr)] string     name,
+            out                             ItemPropId propID,
+            out                             ushort     varType);
 
         uint GetNumberOfArchiveProperties();
 
