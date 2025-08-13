@@ -4,7 +4,6 @@ using SevenZipExtractor.IO.Callback;
 using System;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using System.Threading;
 using System.Threading.Tasks;
@@ -119,13 +118,13 @@ namespace SevenZipExtractor
                 IsSplitBefore  = GetUnmanagedProperty<bool>(archive, index, ItemPropId.SplitBefore),
                 IsSplitAfter   = GetUnmanagedProperty<bool>(archive, index, ItemPropId.SplitAfter),
                 IsSolid        = GetUnmanagedProperty<bool>(archive, index, ItemPropId.Solid),
-                CreationTime   = GetProperty<DateTime>(archive, index, ItemPropId.CreationTime),
-                LastWriteTime  = GetProperty<DateTime>(archive, index, ItemPropId.LastWriteTime),
-                LastAccessTime = GetProperty<DateTime>(archive, index, ItemPropId.LastAccessTime),
-                FileName       = GetProperty<string>(archive, index, ItemPropId.Path),
-                Comment        = GetProperty<string>(archive, index, ItemPropId.Comment),
-                HostOs         = GetProperty<string>(archive, index, ItemPropId.HostOS),
-                Method         = GetProperty<string>(archive, index, ItemPropId.Method)
+                CreationTime   = DateTime.FromFileTime(GetUnmanagedProperty<long>(archive, index, ItemPropId.CreationTime)),
+                LastWriteTime  = DateTime.FromFileTime(GetUnmanagedProperty<long>(archive, index, ItemPropId.LastWriteTime)),
+                LastAccessTime = DateTime.FromFileTime(GetUnmanagedProperty<long>(archive, index, ItemPropId.LastAccessTime)),
+                FileName       = GetStringProperty(archive, index, ItemPropId.Path),
+                Comment        = GetStringProperty(archive, index, ItemPropId.Comment),
+                HostOs         = GetStringProperty(archive, index, ItemPropId.HostOS),
+                Method         = GetStringProperty(archive, index, ItemPropId.Method)
             };
 
             return entry;
@@ -135,18 +134,29 @@ namespace SevenZipExtractor
             where T : unmanaged
         {
             archive.GetProperty(fileIndex, name, out ComVariant propVariant);
-            return propVariant.GetRawDataRef<T>();
+            using (propVariant)
+            {
+                ref T data = ref propVariant.GetRawDataRef<T>();
+                return data; // Return and copy the value from ref
+            }
         }
 
-        private static T? GetProperty<T>(IInArchive archive, uint fileIndex, ItemPropId name)
+        private static unsafe string? GetStringProperty(IInArchive archive, uint fileIndex, ItemPropId name)
         {
             archive.GetProperty(fileIndex, name, out ComVariant propVariant);
+            using (propVariant)
+            {
+                ref byte data = ref propVariant.GetRawDataRef<byte>();
+                if (Unsafe.IsNullRef(ref data) || data == '\0')
+                {
+                    return null;
+                }
 
-            return propVariant.VarType switch
-                   {
-                       VarEnum.VT_FILETIME => (T)(object)DateTime.FromFileTime(propVariant.GetRawDataRef<long>()),
-                       _ => propVariant.As<T>()
-                   };
+                void** ptr        = (void**)Unsafe.AsPointer(ref data);
+                int    byteLength = *((int*)*ptr - 1) / 2;
+
+                return byteLength <= 0 ? null : new string((char*)*ptr, 0, byteLength);
+            }
         }
 
         /// <summary>
