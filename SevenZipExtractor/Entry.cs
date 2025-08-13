@@ -104,6 +104,8 @@ namespace SevenZipExtractor
         /// </summary>
         public bool IsSolid { get; set; }
 
+        public override string ToString() => $"{(IsFolder ? "Folder" : "File")}: {FileName}";
+
         internal static Entry Create(IInArchive archive, uint index, ArchiveFile parent)
         {
             Entry entry = new(archive, index, parent)
