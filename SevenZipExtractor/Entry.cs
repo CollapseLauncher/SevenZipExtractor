@@ -179,12 +179,12 @@ namespace SevenZipExtractor
         /// <param name="fileName">Path where the file will be extracted.</param>
         /// <param name="preserveTimestamp">Preserve the timestamp of the file.</param>
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
-        public ConfiguredTaskAwaitable ExtractAsync(string fileName, bool preserveTimestamp = true, CancellationToken token = default)
+        public Task ExtractAsync(string fileName, bool preserveTimestamp = true, CancellationToken token = default)
             => Task.Factory.StartNew(
                 () => Extract(fileName, preserveTimestamp, token),
                 token,
                 TaskCreationOptions.LongRunning,
-                TaskScheduler.Default).ConfigureAwait(false);
+                TaskScheduler.Default);
 
         /// <summary>
         /// Extract this specific entry of the file. Use <seealso cref="ArchiveFile.Extract"/> instead if you want to extract the whole archive.<br/>
@@ -216,11 +216,11 @@ namespace SevenZipExtractor
         /// <param name="isDispose">Dispose the stream after extraction is completed.</param>
         /// <param name="preserveTimestamp">Preserve the timestamp of the file.</param>
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
-        public ConfiguredTaskAwaitable ExtractAsync(Stream stream, bool preserveTimestamp, bool isDispose = true, CancellationToken token = default)
+        public Task ExtractAsync(Stream stream, bool preserveTimestamp, bool isDispose = true, CancellationToken token = default)
             => Task.Factory.StartNew(
                 () => Extract(stream, preserveTimestamp, isDispose, token),
                 token,
                 TaskCreationOptions.LongRunning,
-                TaskScheduler.Default).ConfigureAwait(false);
+                TaskScheduler.Default);
     }
 }
