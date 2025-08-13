@@ -50,13 +50,17 @@ namespace SevenZipExtractor
         public int Count { get; }
 
         /// <summary>
+        /// Gets the count of files and folders in the archive.
+        /// </summary>
+        public int CountWithFolders { get; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="ArchiveFile"/> class from the specified archive file path.
         /// </summary>
         /// <param name="archiveFilePath">The path to the archive file.</param>
         public ArchiveFile(string archiveFilePath) :
             this(File.Open(archiveFilePath, FileMode.Open, FileAccess.Read, FileShare.Read), true)
-        {
-        }
+        { }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ArchiveFile"/> class from the specified archive stream and format.
@@ -65,8 +69,7 @@ namespace SevenZipExtractor
         /// <param name="format">The format of the archive file. Default is <see cref="SevenZipFormat.Undefined"/> for automatic detection.</param>
         public ArchiveFile(Stream archiveStream, SevenZipFormat format = SevenZipFormat.Undefined) :
             this(archiveStream, true, format)
-        {
-        }
+        { }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ArchiveFile"/> class from the specified archive stream and format.
@@ -97,7 +100,8 @@ namespace SevenZipExtractor
             _archive              = NativeMethods.CreateInArchiveClassId(FormatIdentity.GuidMapping[format]);
             _disposeArchiveStream = disposeStream;
             Entries               = GetEntriesInner(_archive, streamWrapper, this);
-            Count                 = Entries.Select(x => x.IsFolder ? 0 : 1).Sum();
+            CountWithFolders      = Entries.Count;
+            Count                 = Entries.Sum(x => x.IsFolder ? 0 : 1);
         }
 
         ~ArchiveFile() => Dispose();
