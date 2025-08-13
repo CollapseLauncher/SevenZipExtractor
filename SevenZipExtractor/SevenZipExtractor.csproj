@@ -5,16 +5,18 @@
 		<Product>SevenZipWrapper</Product>
 		<PublishTrimmed>false</PublishTrimmed>
 		<Description>C# wrapper for 7z.dll (included)</Description>
-		<Copyright>Copyright 2022-2024</Copyright>
-		<Version>1.0.16</Version>
+		<Copyright>Copyright 2022-2025</Copyright>
+		<Version>1.1.0</Version>
 		<Authors>Eugene Sichkar, Alexander Selishchev, @matortheeternal, Hajin Jang, Artem Tarasov, Jose Pineiro, Raphael Stoeckli, Wojciech Nagórski. Modified by neon-nyan</Authors>
 		<PackageId>SevenZipExtractor</PackageId>
 		<PackageProjectUrl>https://github.com/CollapseLauncher/SevenZipExtractor</PackageProjectUrl>
 		<PackageTags>7Zip APM Arj BZip2 Cab Chm Compound Cpio CramFS Deb Dll Dmg Exe Fat Flv GZip Hfs Iso Lzh Lzma Lzma86 Mach-O Mbr Mub Nsis Ntfs Ppmd Rar Rar5 Rpm Split SquashFS Swf Swfc Tar TE Udf UEFIc UEFIs Vhd Wim Xar XZ Z Zip</PackageTags>
-		<PackageVersion>1.0.17</PackageVersion>
+		<PackageVersion>1.1.0</PackageVersion>
 		<Platforms>x64</Platforms>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<IsAotCompatible>true</IsAotCompatible>
+		<Nullable>enable</Nullable>
+		<DisableRuntimeMarshalling>true</DisableRuntimeMarshalling>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -26,10 +28,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<None Remove="SevenZipExtractor.targets" />
-	</ItemGroup>
-
-	<ItemGroup>
 	  <Content Include="Lib\7z.dll">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </Content>
@@ -38,9 +36,5 @@
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">
 		<Optimize>True</Optimize>
 		<DebugType>portable</DebugType>
-		<TieredPGO>true</TieredPGO>
-		<TieredCompilation>true</TieredCompilation>
-		<TieredCompilationQuickJit>false</TieredCompilationQuickJit>
-		<TieredCompilationQuickJitForLoops>false</TieredCompilationQuickJitForLoops>
 	</PropertyGroup>
 </Project>
