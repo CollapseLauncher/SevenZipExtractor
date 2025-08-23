@@ -4,7 +4,6 @@ using SevenZipExtractor.IO.Callback;
 using System;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using System.Threading;
 using System.Threading.Tasks;
@@ -104,49 +103,60 @@ namespace SevenZipExtractor
         /// </summary>
         public bool IsSolid { get; set; }
 
+        public override string ToString() => $"{(IsFolder ? "Folder" : "File")}: {FileName}";
+
         internal static Entry Create(IInArchive archive, uint index, ArchiveFile parent)
         {
             Entry entry = new(archive, index, parent)
             {
-                IsFolder       = GetUnmanagedProperty<bool>(archive, index, ItemPropId.kpidIsFolder),
-                IsEncrypted    = GetUnmanagedProperty<bool>(archive, index, ItemPropId.kpidEncrypted),
-                Size           = GetUnmanagedProperty<ulong>(archive, index, ItemPropId.kpidSize),
-                PackedSize     = GetUnmanagedProperty<ulong>(archive, index, ItemPropId.kpidPackedSize),
-                Crc            = GetUnmanagedProperty<uint>(archive, index, ItemPropId.kpidCRC),
-                Attributes     = GetUnmanagedProperty<uint>(archive, index, ItemPropId.kpidAttributes),
-                IsSplitBefore  = GetUnmanagedProperty<bool>(archive, index, ItemPropId.kpidSplitBefore),
-                IsSplitAfter   = GetUnmanagedProperty<bool>(archive, index, ItemPropId.kpidSplitAfter),
-                IsSolid        = GetUnmanagedProperty<bool>(archive, index, ItemPropId.kpidSolid),
-                CreationTime   = GetProperty<DateTime>(archive, index, ItemPropId.kpidCreationTime),
-                LastWriteTime  = GetProperty<DateTime>(archive, index, ItemPropId.kpidLastWriteTime),
-                LastAccessTime = GetProperty<DateTime>(archive, index, ItemPropId.kpidLastAccessTime),
-                FileName       = GetProperty<string>(archive, index, ItemPropId.kpidPath),
-                Comment        = GetProperty<string>(archive, index, ItemPropId.kpidComment),
-                HostOs         = GetProperty<string>(archive, index, ItemPropId.kpidHostOS),
-                Method         = GetProperty<string>(archive, index, ItemPropId.kpidMethod)
+                IsFolder       = GetUnmanagedProperty<bool>(archive, index, ItemPropId.IsFolder),
+                IsEncrypted    = GetUnmanagedProperty<bool>(archive, index, ItemPropId.Encrypted),
+                Size           = GetUnmanagedProperty<ulong>(archive, index, ItemPropId.Size),
+                PackedSize     = GetUnmanagedProperty<ulong>(archive, index, ItemPropId.PackedSize),
+                Crc            = GetUnmanagedProperty<uint>(archive, index, ItemPropId.CRC),
+                Attributes     = GetUnmanagedProperty<uint>(archive, index, ItemPropId.Attributes),
+                IsSplitBefore  = GetUnmanagedProperty<bool>(archive, index, ItemPropId.SplitBefore),
+                IsSplitAfter   = GetUnmanagedProperty<bool>(archive, index, ItemPropId.SplitAfter),
+                IsSolid        = GetUnmanagedProperty<bool>(archive, index, ItemPropId.Solid),
+                CreationTime   = DateTime.FromFileTime(GetUnmanagedProperty<long>(archive, index, ItemPropId.CreationTime)),
+                LastWriteTime  = DateTime.FromFileTime(GetUnmanagedProperty<long>(archive, index, ItemPropId.LastWriteTime)),
+                LastAccessTime = DateTime.FromFileTime(GetUnmanagedProperty<long>(archive, index, ItemPropId.LastAccessTime)),
+                FileName       = GetStringProperty(archive, index, ItemPropId.Path),
+                Comment        = GetStringProperty(archive, index, ItemPropId.Comment),
+                HostOs         = GetStringProperty(archive, index, ItemPropId.HostOS),
+                Method         = GetStringProperty(archive, index, ItemPropId.Method)
             };
 
             return entry;
         }
 
-        private static unsafe T GetUnmanagedProperty<T>(IInArchive archive, uint fileIndex, ItemPropId name)
+        private static T GetUnmanagedProperty<T>(IInArchive archive, uint fileIndex, ItemPropId name)
             where T : unmanaged
         {
-            ComVariant propVariant = ComVariant.Null;
-            archive.GetProperty(fileIndex, name, &propVariant);
-            return propVariant.GetRawDataRef<T>();
+            archive.GetProperty(fileIndex, name, out ComVariant propVariant);
+            using (propVariant)
+            {
+                ref T data = ref propVariant.GetRawDataRef<T>();
+                return data; // Return and copy the value from ref
+            }
         }
 
-        private static unsafe T? GetProperty<T>(IInArchive archive, uint fileIndex, ItemPropId name)
+        private static unsafe string? GetStringProperty(IInArchive archive, uint fileIndex, ItemPropId name)
         {
-            ComVariant propVariant = ComVariant.Null;
-            archive.GetProperty(fileIndex, name, &propVariant);
+            archive.GetProperty(fileIndex, name, out ComVariant propVariant);
+            using (propVariant)
+            {
+                ref byte data = ref propVariant.GetRawDataRef<byte>();
+                if (Unsafe.IsNullRef(ref data) || data == '\0')
+                {
+                    return null;
+                }
 
-            return propVariant.VarType switch
-                   {
-                       VarEnum.VT_FILETIME => (T)(object)DateTime.FromFileTime(propVariant.GetRawDataRef<long>()),
-                       _ => propVariant.As<T>()
-                   };
+                void** ptr        = (void**)Unsafe.AsPointer(ref data);
+                int    byteLength = *((int*)*ptr - 1) / 2;
+
+                return byteLength <= 0 ? null : new string((char*)*ptr, 0, byteLength);
+            }
         }
 
         /// <summary>
@@ -181,12 +191,12 @@ namespace SevenZipExtractor
         /// <param name="fileName">Path where the file will be extracted.</param>
         /// <param name="preserveTimestamp">Preserve the timestamp of the file.</param>
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
-        public ConfiguredTaskAwaitable ExtractAsync(string fileName, bool preserveTimestamp = true, CancellationToken token = default)
+        public Task ExtractAsync(string fileName, bool preserveTimestamp = true, CancellationToken token = default)
             => Task.Factory.StartNew(
                 () => Extract(fileName, preserveTimestamp, token),
                 token,
                 TaskCreationOptions.LongRunning,
-                TaskScheduler.Default).ConfigureAwait(false);
+                TaskScheduler.Default);
 
         /// <summary>
         /// Extract this specific entry of the file. Use <seealso cref="ArchiveFile.Extract"/> instead if you want to extract the whole archive.<br/>
@@ -201,7 +211,7 @@ namespace SevenZipExtractor
             using (ArchiveStreamCallback callback = new(_index, stream, isDispose, token))
             {
                 callback.SetArchivePassword(_parent.ArchivePassword);
-                _archive?.Extract([_index], 1, 0, callback);
+                _archive?.Extract(in _index, 1, 0, callback);
             }
 
             if (stream is FileStream fileStream)
@@ -218,11 +228,11 @@ namespace SevenZipExtractor
         /// <param name="isDispose">Dispose the stream after extraction is completed.</param>
         /// <param name="preserveTimestamp">Preserve the timestamp of the file.</param>
         /// <param name="token">A cancellation token to observe while waiting for the task to complete.</param>
-        public ConfiguredTaskAwaitable ExtractAsync(Stream stream, bool preserveTimestamp, bool isDispose = true, CancellationToken token = default)
+        public Task ExtractAsync(Stream stream, bool preserveTimestamp, bool isDispose = true, CancellationToken token = default)
             => Task.Factory.StartNew(
                 () => Extract(stream, preserveTimestamp, isDispose, token),
                 token,
                 TaskCreationOptions.LongRunning,
-                TaskScheduler.Default).ConfigureAwait(false);
+                TaskScheduler.Default);
     }
 }

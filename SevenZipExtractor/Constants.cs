@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Buffers;
+// ReSharper disable InconsistentNaming
+// ReSharper disable StringLiteralTypo
 
 namespace SevenZipExtractor
 {
@@ -8,6 +10,7 @@ namespace SevenZipExtractor
         internal const           string IID_IInArchive      = "23170F69-40C1-278A-0000-000600600000";
         internal static readonly Guid   IID_IInArchive_Guid = IID_IInArchive.ParseAsGuid();
 
+        internal const string IID_IProgress               = "23170F69-40C1-278A-0000-000000050000";
         internal const string IID_IArchiveOpenCallback    = "23170F69-40C1-278A-0000-000600100000";
         internal const string IID_IArchiveExtractCallback = "23170F69-40C1-278A-0000-000600200000";
         internal const string IID_ICryptoGetTextPassword  = "23170F69-40C1-278A-0000-000500100000";
@@ -18,15 +21,15 @@ namespace SevenZipExtractor
 
         internal static Guid ParseAsGuid(this string guidString)
         {
-            const string TrimStartEnd = "{[]}";
+            const string trimStartEnd = "{[]}";
 
             ReadOnlySpan<char> guidChars = guidString;
-            guidChars = guidChars.TrimStart(TrimStartEnd).TrimEnd(TrimStartEnd);
+            guidChars = guidChars.TrimStart(trimStartEnd).TrimEnd(trimStartEnd);
 
             // We try manually decode the bytes of the GUID to avoid Culture-Specific decode, causing
             // the GUID to become invalid (I'm not actually pretty sure but seems like it?)
 
-            Span<byte> guidBytes = stackalloc byte[16];
+            Span<byte>  guidBytes  = stackalloc byte[16];
             Span<Range> guidRanges = stackalloc Range[5];
 
             int guidRangesLen = guidChars.Split(guidRanges, '-', StringSplitOptions.TrimEntries);
@@ -48,8 +51,8 @@ namespace SevenZipExtractor
             if (OperationStatus.Done !=
                 Convert.FromHexString(currentSlice,
                                       guidBytes[bufferOffset..],
-                                      out int charsConsumed,
-                                      out int bytesWritten))
+                                      out int _,
+                                      out int _))
             {
                 goto ParseFailed;
             }

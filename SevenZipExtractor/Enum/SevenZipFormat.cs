@@ -1,3 +1,6 @@
+// ReSharper disable InconsistentNaming
+// ReSharper disable IdentifierTypo
+// ReSharper disable CommentTypo
 namespace SevenZipExtractor.Enum
 {
     public enum SevenZipFormat

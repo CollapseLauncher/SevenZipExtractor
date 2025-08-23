@@ -14,9 +14,9 @@ namespace SevenZipExtractor.IO.Wrapper
             CancelToken   = cancelToken;
         }
 
-        public virtual void Seek(long offset, SeekOrigin seekOrigin, ulong* newPosition)
+        public virtual void Seek(long offset, SeekOrigin seekOrigin, long* newPosition)
         {
-            ulong pos = (ulong)BaseStream.Seek(offset, seekOrigin);
+            long pos = BaseStream.Seek(offset, seekOrigin);
             if (newPosition != null)
             {
                 *newPosition = pos;

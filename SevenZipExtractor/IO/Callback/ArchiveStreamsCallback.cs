@@ -81,12 +81,12 @@ namespace SevenZipExtractor.IO.Callback
             return new ArchiveStreamsCallback(outStreamDelegates, outStreamTimestamps, preserveTimestamp, token);
         }
 
-        public override int GetStream(uint index, out ISequentialOutStream? outStream, AskMode askExtractMode)
+        public override void GetStream(uint index, out ISequentialOutStream? outStream, AskMode askExtractMode)
         {
-            if (askExtractMode != AskMode.kExtract)
+            if (askExtractMode != AskMode.Extract)
             {
                 outStream = null;
-                return 0;
+                return;
             }
 
             Func<Stream>? streamFunc    = streams[(int)index];
@@ -95,7 +95,7 @@ namespace SevenZipExtractor.IO.Callback
             if (streamFunc == null || currentStream == null)
             {
                 outStream = null;
-                return 0;
+                return;
             }
 
             DateTime dateTime = streamTimestamps[(int)index];
@@ -109,7 +109,6 @@ namespace SevenZipExtractor.IO.Callback
             // and triggering unwanted disposal of the output stream. Disposing will be handled by
             // this class's Dispose() method instead.
             outStream = new OutStreamWrapper(currentStream, cancellationToken);
-            return 0;
         }
 
         public void Dispose()

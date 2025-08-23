@@ -1,5 +1,5 @@
 ﻿using SevenZipExtractor.Interface;
-using System.Diagnostics;
+using System;
 using System.IO;
 using System.Runtime.InteropServices.Marshalling;
 using System.Threading;
@@ -8,41 +8,26 @@ using System.Threading;
 namespace SevenZipExtractor.IO.Wrapper
 {
     [GeneratedComClass]
-    internal sealed unsafe partial class OutStreamWrapper : StreamWrapper, IOutStream
+    internal sealed partial class OutStreamWrapper : StreamWrapper, IOutStream
     {
         internal OutStreamWrapper(Stream baseStream, CancellationToken cancelToken) : base(baseStream, cancelToken)
         {
         }
 
-        public int SetSize(long newSize)
+        public void SetSize(long newSize)
         {
-            lock (BaseStream)
-            {
-                BaseStream.SetLength(newSize);
-            }
-
-            return 0;
+            BaseStream.SetLength(newSize);
         }
 
-        public int Write(byte[] data, uint size, uint* processedSize)
+        public unsafe void Write(void* data, int size, int* processedSize)
         {
             CancelToken.ThrowIfCancellationRequested();
-
-            int sizeAsInt = (int)size;
-
-            lock (BaseStream)
-            {
-                BaseStream.Write(data, 0, sizeAsInt);
-            #if DEBUG
-                Debug.Assert(data.Length == sizeAsInt);
-            #endif
-            }
+            BaseStream.Write(new ReadOnlySpan<byte>(data, size));
 
             if (processedSize != null)
             {
                 *processedSize = size;
             }
-            return 0;
         }
     }
 }
