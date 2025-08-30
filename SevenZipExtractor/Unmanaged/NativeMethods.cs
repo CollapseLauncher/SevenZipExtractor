@@ -5,7 +5,6 @@ using System.Diagnostics;
 #endif
 using System.IO;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 // ReSharper disable StringLiteralTypo
@@ -107,48 +106,21 @@ namespace SevenZipExtractor.Unmanaged
             return pResult;
         }
 
-        private static unsafe void CreateObjectDelegate<T>(ref Guid classID,
-                                                           ref Guid interfaceID,
-                                                           out T?   outObject)
-            where T : class
-        {
-            bool invokeSucceeded = false;
-            Unsafe.SkipInit(out outObject);
-            void* outObjectNative = null;
-            try
-            {
-                fixed (Guid* interfaceIDNative = &interfaceID)
-                {
-                    fixed (Guid* classIDNative = &classID)
-                    {
-                        int result = CreateObjectDelegate(classIDNative, interfaceIDNative, &outObjectNative);
-                        if (result != 0)
-                        {
-                            Marshal.ThrowExceptionForHR(result);
-                        }
-                    }
-                }
-
-                invokeSucceeded = true;
-                outObject       = ComInterfaceMarshaller<T>.ConvertToManaged(outObjectNative);
-            }
-            finally
-            {
-                if (invokeSucceeded)
-                {
-                    ComInterfaceMarshaller<T>.Free(outObjectNative);
-                }
-            }
-        }
-
-        internal static IInArchive? CreateInArchiveClassId(Guid formatClassId)
+        internal static unsafe IInArchive? CreateInArchiveClassId(Guid formatClassId)
         {
             Guid interfaceId = Constants.IID_IInArchive_Guid;
-            CreateObjectDelegate(ref formatClassId, ref interfaceId, out IInArchive? result);
-            return result;
+            Console.WriteLine($"[7-zip][NativeMethods::CreateInArchiveClassId] Creating IInArcive {interfaceId} with Format Class ID: {formatClassId}");
+
+            int result;
+            if ((result = CreateObjectDelegate(formatClassId, interfaceId, out nint outObjectNative)) != 0)
+            {
+                Marshal.ThrowExceptionForHR(result);
+            }
+
+            return ComInterfaceMarshaller<IInArchive>.ConvertToManaged((void*)outObjectNative);
         }
 
         [LibraryImport(SevenZipMainDllPath, EntryPoint = "CreateObject")]
-        internal static unsafe partial int CreateObjectDelegate(Guid* classIDNative, Guid* interfaceIDNative, void** outObjectNative);
+        internal static unsafe partial int CreateObjectDelegate(Guid classIDNative, Guid interfaceIDNative, out nint outObjectNative);
     }
 }
