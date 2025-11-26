@@ -130,22 +130,30 @@ namespace SevenZipExtractor
             return entry;
         }
 
-        private static T GetUnmanagedProperty<T>(IInArchive archive, uint fileIndex, ItemPropId name)
+        private static unsafe T GetUnmanagedProperty<T>(IInArchive archive, uint fileIndex, ItemPropId name)
             where T : unmanaged
         {
-            archive.GetProperty(fileIndex, name, out ComVariant propVariant);
-            using (propVariant)
+            Unsafe.SkipInit(out ComVariant propVariant);
+
+            try
             {
+                archive.GetProperty(fileIndex, name, (ComVariant*)Unsafe.AsPointer(ref propVariant));
                 ref T data = ref propVariant.GetRawDataRef<T>();
                 return data; // Return and copy the value from ref
+            }
+            finally
+            {
+                propVariant.Dispose();
             }
         }
 
         private static unsafe string? GetStringProperty(IInArchive archive, uint fileIndex, ItemPropId name)
         {
-            archive.GetProperty(fileIndex, name, out ComVariant propVariant);
-            using (propVariant)
+            Unsafe.SkipInit(out ComVariant propVariant);
+
+            try
             {
+                archive.GetProperty(fileIndex, name, (ComVariant*)Unsafe.AsPointer(ref propVariant));
                 ref byte data = ref propVariant.GetRawDataRef<byte>();
                 if (Unsafe.IsNullRef(ref data) || data == '\0')
                 {
@@ -156,6 +164,10 @@ namespace SevenZipExtractor
                 int    byteLength = *((int*)*ptr - 1) / 2;
 
                 return byteLength <= 0 ? null : new string((char*)*ptr, 0, byteLength);
+            }
+            finally
+            {
+                propVariant.Dispose();
             }
         }
 

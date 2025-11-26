@@ -16,7 +16,6 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <IsAotCompatible>true</IsAotCompatible>
         <Nullable>enable</Nullable>
-        <DisableRuntimeMarshalling>true</DisableRuntimeMarshalling>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)'=='Debug'">

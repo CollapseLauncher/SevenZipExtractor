@@ -19,10 +19,10 @@ namespace SevenZipExtractor.Interface
         void Close();
         void GetNumberOfItems(out uint count);
 
-        void GetProperty(
-            uint           index,
-            ItemPropId     propID,
-            out ComVariant value);
+        unsafe void GetProperty(
+            uint        index,
+            ItemPropId  propID,
+            ComVariant* value);
 
         // indices must be sorted 
         // numItems = 0xFFFFFFFF means all files
@@ -33,9 +33,9 @@ namespace SevenZipExtractor.Interface
             int                                                          testMode,
             [MarshalAs(UnmanagedType.Interface)] IArchiveExtractCallback extractCallback);
 
-        void GetArchiveProperty(
-            ItemPropId     propID,
-            out ComVariant value);
+        unsafe void GetArchiveProperty(
+            ItemPropId  propID,
+            ComVariant* value);
 
         uint GetNumberOfProperties();
 
