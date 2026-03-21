@@ -5,7 +5,7 @@
         <Product>SevenZipWrapper</Product>
         <PublishTrimmed>false</PublishTrimmed>
         <Description>C# wrapper for 7z.dll (included)</Description>
-        <Copyright>Copyright 2022-2025</Copyright>
+        <Copyright>Copyright 2022-2026</Copyright>
         <Version>1.1.0</Version>
         <Authors>Eugene Sichkar, Alexander Selishchev, @matortheeternal, Hajin Jang, Artem Tarasov, Jose Pineiro, Raphael Stoeckli, Wojciech Nagórski. Modified by neon-nyan</Authors>
         <PackageId>SevenZipExtractor</PackageId>
